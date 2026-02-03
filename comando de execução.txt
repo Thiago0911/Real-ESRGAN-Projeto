@@ -1,0 +1,1 @@
+realesrgan-ncnn-vulkan.exe -i <input_image> -o output.png
