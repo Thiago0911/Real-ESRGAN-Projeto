@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Forge | PMZ Peças e Pneus</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="mini-header">
+        <div class="header-content">
+            <div class="brand">
+                <img src="pmz-logo.webp" alt="PMZ Logo" class="pmz-logo">
+                <div class="brand-divider"></div>
+                <div class="brand-text">
+                    <span class="app-name">Pixel Forge</span>
+                    <span class="company-name">PMZ Peças e Pneus</span>
+                </div>
+            </div>
+            <div class="system-status">
+                <span id="status-badge" class="badge badge-waiting">Aguardando</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard">
+        <section class="control-panel">
+            <div class="actions">
+                <button id="btn-start" class="btn btn-primary">
+                    <span class="icon">▶</span> Iniciar Processamento
+                </button>
+                <button id="btn-pause" class="btn btn-secondary" disabled>
+                    <span class="icon">⏸</span> Pausar
+                </button>
+            </div>
+            
+            <div class="metrics">
+                <div class="metric-item">
+                    <span class="label">Tempo Total</span>
+                    <span id="m-time" class="value">00:00:00</span>
+                </div>
+                <div class="metric-item">
+                    <span class="label">Processadas</span>
+                    <span id="m-total" class="value">0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="label">Média/Img</span>
+                    <span id="m-avg" class="value">0.0s</span>
+                </div>
+            </div>
+        </section>
+
+        <div class="grid-layout">
+            <section class="folder-section">
+                <div class="section-header">
+                    <span class="folder-icon">📂</span>
+                    <h2>Input</h2>
+                    <span id="count-input" class="count-tag">0</span>
+                </div>
+                <div class="drop-zone" id="drop-zone">
+                    <div class="drop-content">
+                        <span class="upload-icon">☁️</span>
+                        <p>Arraste imagens ou <strong>clique para selecionar</strong></p>
+                        <input type="file" id="file-input" multiple hidden accept="image/*">
+                    </div>
+                </div>
+                <ul id="list-input" class="file-list"></ul>
+            </section>
+
+            <section class="folder-section">
+                <div class="section-header">
+                    <span class="folder-icon">📂</span>
+                    <h2>Output</h2>
+                    <span id="count-output" class="count-tag">0</span>
+                    <button id="btn-open-output" class="btn-open-folder" title="Abrir pasta de saída">
+                        <span>📁</span> Abrir Pasta
+                    </button>
+                </div>
+                <div class="list-container">
+                    <ul id="list-output" class="file-list">
+                        <li class="file-item">
+                            <button class="file-name-btn">exemplo_processado.jpg</button>
+                            <span class="status-dot"></span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="folder-section">
+                <div class="section-header">
+                    <span class="folder-icon">📂</span>
+                    <h2>Tratadas</h2>
+                    <span id="count-treated" class="count-tag">0</span>
+                </div>
+                <div class="list-container">
+                    <ul id="list-treated" class="file-list readonly"></ul>
+                </div>
+            </section>
+        </div>
+
+        <section id="comparison-area" class="comparison-section" style="display: none;">
+            <div class="comparison-header">
+                <h3>Comparação Visual</h3>
+                <span id="selected-filename" class="filename-display"></span>
+                <button id="btn-close-comparison" class="btn-close">✕</button>
+            </div>
+            <div class="comparison-grid">
+                <div class="comparison-card">
+                    <span class="comp-label">Antes (Tratadas)</span>
+                    <div class="img-wrapper">
+                        <img id="img-before" src="" alt="Original">
+                    </div>
+                </div>
+                <div class="comparison-card">
+                    <span class="comp-label">Depois (Output)</span>
+                    <div class="img-wrapper">
+                        <img id="img-after" src="" alt="Processada">
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
