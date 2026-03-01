@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ImageUp, Scissors, Layers, Download, Sparkles, Gauge } from "lucide-react";
+import { ImageUp, Scissors, Layers, Download, Sparkles, ShieldCheck } from "lucide-react";
 
 const features = [
   {
@@ -28,9 +28,9 @@ const features = [
     description: "Melhore cores, contraste e nitidez automaticamente com IA.",
   },
   {
-    icon: Gauge,
-    title: "Velocidade Industrial",
-    description: "Processamento em segundos, mesmo para imagens de alta resolução.",
+    icon: ShieldCheck,
+    title: "Privacidade e controle",
+    description: "As imagens não saem da máquina — mais segurança para dados internos.",
   },
 ];
 

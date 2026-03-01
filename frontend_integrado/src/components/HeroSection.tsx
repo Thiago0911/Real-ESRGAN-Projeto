@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Sparkles, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
+import Typewriter from "@/components/ui/typewriter";
 
 const HeroSection = () => {
   return (
@@ -35,47 +36,59 @@ const HeroSection = () => {
             className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary"
           >
             <Sparkles className="h-4 w-4" />
-            Potencializado por IA de última geração
+            IA aplicada para padronizar imagens do e-commerce PMZ
           </motion.div>
 
           <h1 className="text-5xl font-bold leading-tight tracking-tight sm:text-6xl lg:text-7xl">
-            Transforme pixels em{" "}
-            <span className="text-gradient-forge">obras-primas</span>
+            <span className="block">Transforme pixels em</span>
+
+            <Typewriter
+              words={["obras-primas", "arte", "resultados profissionais", "imagens incríveis"]}
+              className="text-gradient-forge block whitespace-nowrap md:whitespace-normal"
+              cursorClassName="animate-pulse"
+              typingSpeedMs={70}
+              deletingSpeedMs={40}
+              pauseMs={900}
+            />
           </h1>
 
           <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Aumente a resolução, remova fundos e otimize suas imagens com 
-            inteligência artificial. Qualidade profissional em poucos cliques.
+            Aumente a resolução, remova fundos e otimize suas imagens com IA.
+            Qualidade profissional em poucos cliques, com padronização do catálogo e ganho de produtividade para o time.
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link to="/dashboard">
               <button className="inline-flex items-center justify-center h-14 px-10 rounded-xl text-lg font-semibold bg-forge-gradient text-primary-foreground glow-forge hover:brightness-110 transition-all gap-2">
-                Começar Gratuitamente
+                Testar agora
                 <ArrowRight className="h-5 w-5" />
               </button>
             </Link>
-            <a href="#demo">
+
+            <a href="#impacto">
               <button className="inline-flex items-center justify-center h-14 px-10 rounded-xl text-lg font-medium border border-border bg-secondary/50 text-secondary-foreground hover:bg-secondary transition-all gap-2">
                 <Zap className="h-5 w-5" />
-                Ver Demo
+                Ver impacto
               </button>
             </a>
           </div>
 
-          {/* Stats */}
+          {/* Stats (mais “honestas” pro pitch) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.8 }}
-            className="mt-16 grid grid-cols-3 gap-8 max-w-lg mx-auto"
+            className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl mx-auto"
           >
             {[
-              { value: "10M+", label: "Imagens processadas" },
-              { value: "8x", label: "Upscaling máximo" },
-              { value: "<3s", label: "Tempo médio" },
+              { value: "1 clique", label: "Pipeline automático (upload → output)" },
+              { value: "Mais velocidade", label: "Processamento local otimizado" },
+              { value: "4× nitidez", label: "Detalhes mais claros no produto" },
+              { value: "Escalável", label: "Lotes para catálogo inteiro" },
+              { value: "Mais conversão", label: "Imagens melhores geram confiança" },
+              { value: "Padrão PMZ", label: "Consistência visual no e-commerce" },
             ].map((stat) => (
-              <div key={stat.label}>
+              <div key={stat.label} className="rounded-2xl border border-border bg-card/40 p-6">
                 <div className="text-2xl font-bold font-display text-gradient-forge">{stat.value}</div>
                 <div className="mt-1 text-xs text-muted-foreground">{stat.label}</div>
               </div>
