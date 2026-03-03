@@ -3,6 +3,7 @@ import { ArrowRight, Sparkles, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
 import Typewriter from "@/components/ui/typewriter";
+import { INTERNAL_APP_URL } from "@/lib/links";
 
 const HeroSection = () => {
   return (
@@ -58,12 +59,12 @@ const HeroSection = () => {
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/dashboard">
+            <a href={INTERNAL_APP_URL}>
               <button className="inline-flex items-center justify-center h-14 px-10 rounded-xl text-lg font-semibold bg-forge-gradient text-primary-foreground glow-forge hover:brightness-110 transition-all gap-2">
                 Testar agora
                 <ArrowRight className="h-5 w-5" />
               </button>
-            </Link>
+            </a>
 
             <a href="#impacto">
               <button className="inline-flex items-center justify-center h-14 px-10 rounded-xl text-lg font-medium border border-border bg-secondary/50 text-secondary-foreground hover:bg-secondary transition-all gap-2">

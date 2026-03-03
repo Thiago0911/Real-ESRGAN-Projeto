@@ -1,9 +1,36 @@
 import { motion } from "framer-motion";
 import BeforeAfterSlider from "./BeforeAfterSlider";
+
 import autoPartBefore from "@/assets/auto-part-before.jpg";
 import autoPartAfter from "@/assets/auto-part-after.jpg";
+
 import bgRemoveBefore from "@/assets/bg-remove-before.jpg";
 import bgRemoveAfter from "@/assets/bg-remove-after.jpg";
+// import productCut from "@/assets/product-foreground.png"; // PNG transparente do objeto
+
+const demos = [
+  {
+    icon: "🔧",
+    title: "Enhancement de Peça Automotiva",
+    beforeImage: autoPartBefore,
+    afterImage: autoPartAfter,
+    beforeLabel: "Antes",
+    afterLabel: "Depois",
+    caption: "Upscaling 4x com recuperação de nitidez",
+    fit: "contain" as const,            // ✅ sem “zoom”
+  },
+  {
+    icon: "✂️",
+    title: "Remoção de Fundo",
+    beforeImage: bgRemoveBefore,        // ✅ fundo original
+    afterImage: bgRemoveAfter,          // ✅ cenário “depois” (branco/xadrez)
+   // foregroundImage: productCut,         // ✅ objeto fixo
+    beforeLabel: "Original",
+    afterLabel: "Sem fundo",
+    caption: "Recorte automático com precisão de bordas",
+    fit: "cover" as const,
+  },
+];
 
 const DemoSection = () => {
   return (
@@ -25,47 +52,33 @@ const DemoSection = () => {
         </motion.div>
 
         <div className="grid gap-10 md:grid-cols-2 max-w-5xl mx-auto">
-          {/* Enhancement example */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <h3 className="text-lg font-semibold font-display mb-4 text-center">
-              🔧 Enhancement de Peça Automotiva
-            </h3>
-            <BeforeAfterSlider
-              beforeImage={autoPartBefore}
-              afterImage={autoPartAfter}
-              beforeLabel="ANTES"
-              afterLabel="DEPOIS"
-            />
-            <p className="text-sm text-muted-foreground text-center mt-3">
-              Upscaling 4x com recuperação de nitidez
-            </p>
-          </motion.div>
+          {demos.map((demo, i) => (
+            <motion.div
+              key={demo.title}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: i * 0.15 }}
+              className="flex flex-col gap-4"
+            >
+              <h3 className="text-base font-semibold text-center text-foreground/80 tracking-tight">
+                {demo.icon} {demo.title}
+              </h3>
 
-          {/* Background removal example */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.15 }}
-          >
-            <h3 className="text-lg font-semibold font-display mb-4 text-center">
-              ✂️ Remoção de Fundo
-            </h3>
-            <BeforeAfterSlider
-              beforeImage={bgRemoveBefore}
-              afterImage={bgRemoveAfter}
-              beforeLabel="ORIGINAL"
-              afterLabel="SEM FUNDO"
-            />
-            <p className="text-sm text-muted-foreground text-center mt-3">
-              Recorte automático com precisão de bordas
-            </p>
-          </motion.div>
+              <BeforeAfterSlider
+                beforeImage={demo.beforeImage}
+                afterImage={demo.afterImage}
+                beforeLabel={demo.beforeLabel}
+                afterLabel={demo.afterLabel}
+                fit={demo.fit}
+                foregroundImage={(demo as any).foregroundImage}
+              />
+
+              <p className="text-sm text-muted-foreground text-center">
+                {demo.caption}
+              </p>
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>

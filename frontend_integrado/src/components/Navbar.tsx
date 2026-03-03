@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import pmzLogo from "@/assets/pmz-logo.webp";
+import { INTERNAL_APP_URL } from "@/lib/links";
 
 const Navbar = () => {
   return (
@@ -47,17 +48,17 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <Link to="/dashboard">
+          <a href={INTERNAL_APP_URL}>
             <button className="inline-flex items-center justify-center h-10 px-5 rounded-lg text-sm font-medium border border-primary/40 text-primary hover:bg-primary/10 hover:border-primary/60 transition-all">
               Abrir painel
             </button>
-          </Link>
+          </a>
 
-          <Link to="/dashboard">
+          <a href={INTERNAL_APP_URL}>
             <button className="inline-flex items-center justify-center h-10 px-5 rounded-lg text-sm font-semibold bg-forge-gradient text-primary-foreground glow-forge hover:brightness-110 transition-all">
               Testar agora
             </button>
-          </Link>
+          </a>
         </div>
       </div>
     </motion.nav>

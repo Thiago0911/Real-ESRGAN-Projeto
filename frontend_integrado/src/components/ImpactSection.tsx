@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { TrendingUp, Timer, ShieldCheck, Sparkles } from "lucide-react";
+import { INTERNAL_APP_URL } from "@/lib/links";
 
 const ImpactSection = () => {
   return (
@@ -69,7 +70,7 @@ const ImpactSection = () => {
         {/* CTA opcional no mesmo estilo */}
         <div className="mt-12 flex items-center justify-center">
           <a
-            href="/dashboard"
+            href={INTERNAL_APP_URL}
             className="inline-flex items-center justify-center h-14 px-10 rounded-xl text-lg font-semibold bg-forge-gradient text-primary-foreground glow-forge hover:brightness-110 transition-all"
           >
             Testar agora

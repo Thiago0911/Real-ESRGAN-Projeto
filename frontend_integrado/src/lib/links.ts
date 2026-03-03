@@ -1,0 +1,1 @@
+export const INTERNAL_APP_URL = "/app/";
