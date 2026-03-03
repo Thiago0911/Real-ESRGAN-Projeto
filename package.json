@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@fingerprintjs/fingerprintjs": "^5.1.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "systeminformation": "^5.31.2"
+  }
+}

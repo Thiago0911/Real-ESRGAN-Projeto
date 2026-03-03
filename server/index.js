@@ -2,15 +2,18 @@ const express = require("express");
 const path = require("path");
 const { spawn } = require("child_process");
 const fs = require("fs");
+const si = require("systeminformation");   // ✅ NOVO
+const cors = require("cors");              // ✅ NOVO
 
 const app = express();
 app.use(express.json());
+app.use(cors()); // ✅ IMPORTANTE se frontend estiver em outra porta
 
 const ROOT = path.resolve(__dirname, "..");
 const ENGINE_DIR = path.join(ROOT, "engine");
 const EXE = path.join(ENGINE_DIR, "realesrgan-ncnn-vulkan.exe");
 
-const INPUT_DIR = path.join(ROOT, "Input");   // na sua foto é "Input" (I maiúsculo)
+const INPUT_DIR = path.join(ROOT, "Input");
 const OUTPUT_DIR = path.join(ROOT, "output");
 const LOG_DIR = path.join(ROOT, "logs");
 const LOG_FILE = path.join(LOG_DIR, "log.txt");
@@ -22,13 +25,36 @@ function ensureDirs() {
 
 let running = false;
 
+/* =========================
+   ✅ NOVA ROTA DE SISTEMA
+========================= */
+app.get("/api/system", async (req, res) => {
+  try {
+    const cpu = await si.cpu();
+    const mem = await si.mem();
+    const system = await si.system();
+
+    res.json({
+      machineId: system.uuid,
+      cpuName: cpu.brand,
+      cpuCores: cpu.cores,
+      ramGB: Math.round(mem.total / 1024 / 1024 / 1024),
+      platform: system.model,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao coletar info do sistema" });
+  }
+});
+
+/* =========================
+   SUA ROTA DE UPSCALE
+========================= */
 app.post("/api/upscale", (req, res) => {
   if (running) return res.status(409).json({ success: false, message: "Já existe um processamento em andamento." });
 
   ensureDirs();
   running = true;
 
-  // zera log
   fs.writeFileSync(LOG_FILE, "", "utf8");
 
   const args = [
@@ -41,7 +67,7 @@ app.post("/api/upscale", (req, res) => {
 
   const child = spawn(EXE, args, {
     cwd: ENGINE_DIR,
-    windowsHide: true,            // ✅ não abre janela
+    windowsHide: true,
     stdio: ["ignore", "pipe", "pipe"],
   });
 
@@ -73,5 +99,9 @@ app.get("/api/log", (req, res) => {
     res.type("text/plain").send("");
   }
 });
+
+app.get('/', (req, res) => {
+  res.send('API está funcionando 🚀')
+})
 
 app.listen(3001, () => console.log("API on http://localhost:3001"));
