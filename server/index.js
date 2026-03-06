@@ -27,7 +27,7 @@ function ensureDirs() {
 
 let running = false;
 
-// ─── Multer: salva imagem direto em /Input com nome original ─────────────────
+// ─── Multer: salva imagem direto em /Input com nome original ───
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     ensureDirs();
@@ -98,6 +98,24 @@ app.post("/api/upscale", (req, res) => {
   running = true;
   fs.writeFileSync(LOG_FILE, "", "utf8");
 
+  // Conta quantos arquivos estão no input
+  const inputFiles = fs.readdirSync(INPUT_DIR).filter(f =>
+    ['.jpg', '.jpeg', '.png', '.webp'].includes(path.extname(f).toLowerCase())
+  );
+  const totalImagens = inputFiles.length;
+  const startTime = Date.now();
+
+  // Salva estado inicial das métricas
+  const METRICS_FILE = path.join(ROOT, "logs", "metrics.json");
+  fs.writeFileSync(METRICS_FILE, JSON.stringify({
+    status: "running",
+    totalImagens,
+    startTime,
+    endTime: null,
+    tempoTotalMs: null,
+    mediaPorImagemMs: null,
+  }), "utf8");
+
   const args = [
     "-i", INPUT_DIR,
     "-o", OUTPUT_DIR,
@@ -117,8 +135,24 @@ app.post("/api/upscale", (req, res) => {
 
   child.on("close", (code) => {
     running = false;
+    const endTime = Date.now();
+    const tempoTotalMs = endTime - startTime;
+    const mediaPorImagemMs = totalImagens > 0
+      ? Math.round(tempoTotalMs / totalImagens)
+      : 0;
+
+    // Salva métricas finais
+    fs.writeFileSync(METRICS_FILE, JSON.stringify({
+      status: code === 0 ? "done" : "error",
+      totalImagens,
+      startTime,
+      endTime,
+      tempoTotalMs,
+      mediaPorImagemMs,
+    }), "utf8");
+
     if (code === 0) return res.json({ success: true, message: "Finalizado." });
-    return res.status(500).json({ success: false, message: `Falhou (code ${code}). Verifique logs.` });
+    return res.status(500).json({ success: false, message: `Falhou (code ${code}).` });
   });
 
   child.on("error", (err) => {
@@ -126,6 +160,113 @@ app.post("/api/upscale", (req, res) => {
     fs.appendFileSync(LOG_FILE, `\n[ERROR] ${String(err)}\n`);
     return res.status(500).json({ success: false, message: "Erro ao iniciar o processo." });
   });
+});
+
+// ─── Enhance: dispara run_server.bat (Real-ESRGAN) ───────────────────────────
+app.post("/api/enhance", upload.single("image"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "Nenhum arquivo recebido." });
+  }
+
+  if (running) {
+    return res.status(409).json({ error: "Já existe um processamento em andamento." });
+  }
+
+  ensureDirs();
+  running = true;
+
+  const fileName   = req.file.originalname;
+  const baseName   = path.parse(fileName).name;
+  const outputFile = baseName + ".png";
+  const outputPath = path.join(OUTPUT_DIR, outputFile);
+
+  console.log(`[ENHANCE] Arquivo recebido: ${fileName}`);
+
+  // Remove arquivos antigos do /Input, mantém só o recém-chegado
+  for (const arq of fs.readdirSync(INPUT_DIR)) {
+    if (arq !== fileName) {
+      fs.unlinkSync(path.join(INPUT_DIR, arq));
+      console.log(`[ENHANCE] Removido do Input: ${arq}`);
+    }
+  }
+
+  // Remove output antigo do mesmo arquivo
+  if (fs.existsSync(outputPath)) {
+    fs.unlinkSync(outputPath);
+    console.log(`[ENHANCE] Output antigo removido: ${outputFile}`);
+  }
+
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  const args = [
+    "-i", path.join(INPUT_DIR, fileName),  // arquivo → arquivo
+    "-o", outputPath,                       // arquivo de saída direto
+    "-s", "4",
+    "-t", "256",
+    "-n", "realesrgan-x4plus",
+  ];
+
+  console.log(`[ENHANCE] Chamando EXE com args:`, args.join(" "));
+
+  const proc = spawn(EXE, args, {
+    cwd: ENGINE_DIR,
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  proc.stdout.on("data", d => console.log("[RR-OUT]", d.toString().trim()));
+  proc.stderr.on("data", d => console.log("[RR-ERR]", d.toString().trim()));
+
+  proc.on("close", (code) => {
+    running = false;
+    console.log(`[ENHANCE] realesrgan finalizado com code ${code}`);
+
+    if (code !== 0) {
+      return res.status(500).json({ error: `realesrgan falhou (code ${code})` });
+    }
+
+    if (!fs.existsSync(outputPath)) {
+      console.error(`[ENHANCE] Output não encontrado: ${outputPath}`);
+      return res.status(500).json({ error: "Processamento concluído mas output não foi gerado." });
+    }
+
+    console.log(`[ENHANCE] Output confirmado: ${outputFile}`);
+    return res.json({ success: true, fileName: outputFile });
+  });
+
+  proc.on("error", (err) => {
+    running = false;
+    console.error("[ENHANCE] Erro ao chamar EXE:", err);
+    return res.status(500).json({ error: "Erro ao iniciar o processamento." });
+  });
+});
+
+// ─── Remove Watermark: blur agressivo sobre a imagem inteira ─────────────────
+app.post("/api/remove-watermark", upload.single("image"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "Nenhum arquivo recebido." });
+
+  const inputPath  = req.file.path;
+  const outputName = path.parse(req.file.originalname).name + "_nowm.png";
+  const outputPath = path.join(OUTPUT_DIR, outputName);
+
+  try {
+    // Estratégia: reduz + amplia para suavizar marcas d'água semitransparentes
+    const meta = await sharp(inputPath).metadata();
+    const w = meta.width;
+    const h = meta.height;
+
+    await sharp(inputPath)
+      .resize(Math.round(w * 0.5), Math.round(h * 0.5))   // reduz 50%
+      .resize(w, h, { kernel: sharp.kernel.lanczos3 })     // volta ao tamanho
+      .png()
+      .toFile(outputPath);
+
+    fs.unlinkSync(inputPath);
+    res.json({ success: true, fileName: outputName });
+  } catch (err) {
+    console.error("[REMOVE-WATERMARK]", err);
+    res.status(500).json({ error: "Falha ao processar imagem." });
+  }
 });
 
 // ─── Status: frontend faz polling aqui ───────────────────────────────────────
@@ -191,6 +332,20 @@ app.get("/api/abrir-output", (req, res) => {
 
   child.unref();
   res.json({ success: true });
+});
+
+const METRICS_FILE = path.join(ROOT, "logs", "metrics.json");
+
+app.get("/api/metrics", (req, res) => {
+  try {
+    if (!fs.existsSync(METRICS_FILE)) {
+      return res.json({ status: "idle" });
+    }
+    const data = JSON.parse(fs.readFileSync(METRICS_FILE, "utf8"));
+    res.json(data);
+  } catch {
+    res.json({ status: "idle" });
+  }
 });
 
 // ─── Health check ─────────────────────────────────────────────────────────────

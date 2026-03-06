@@ -6,20 +6,18 @@ echo ============================
 echo PIXEL FORCE 4X
 echo ============================
 
-echo Limpando input (antes)...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0separar_tratadas.ps1"
+REM echo Limpando input (antes)...
+REM powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0separar_tratadas.ps1"
 
 echo.
 
 REM ===== Contar quantas realmente vao ser processadas =====
 for /f %%A in ('powershell -NoProfile -Command "(Get-ChildItem -Path \"%BASE_DIR%input\" -File).Count"') do set TOTAL_PROCESSAR=%%A
 
-
 echo Total a processar: %TOTAL_PROCESSAR%
 
 REM ===== Registrar horario inicial =====
 for /f %%A in ('powershell -NoProfile -Command "Get-Date -Format o"') do set START_TIME=%%A
-
 
 echo.
 echo Iniciando processamento...
