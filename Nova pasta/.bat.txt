@@ -1,0 +1,9 @@
+@echo off
+cd /d "%~dp0"
+
+call .venv\Scripts\activate
+
+cd /d "%~dp0InSPyReNet"
+python run\Inference.py --config configs\extra_dataset\Plus_Ultra.yaml --source input --dest output_rgba --type rgba
+
+pause

@@ -1,0 +1,28 @@
+@echo off
+setlocal
+cd /d "%~dp0"
+
+echo [1/5] Verificando Python...
+python --version >nul 2>&1
+if errorlevel 1 (
+  echo Python nao encontrado. Instale o Python 3.10+ e marque "Add Python to PATH".
+  pause
+  exit /b 1
+)
+
+echo [2/5] Criando venv...
+python -m venv .venv
+
+echo [3/5] Ativando venv...
+call .venv\Scripts\activate
+
+echo [4/5] Atualizando pip...
+python -m pip install --upgrade pip
+
+echo [5/5] Instalando dependencias...
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+pip install -r InSPyReNet\requirements.txt
+pip install kornia pillow opencv-python timm numpy
+
+echo Instalacao concluida!
+pause
