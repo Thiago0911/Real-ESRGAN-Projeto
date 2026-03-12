@@ -1,7 +1,7 @@
 const express = require("express");
 const path = require("path");
+const fs   = require("fs");
 const { spawn } = require("child_process");
-const fs = require("fs");
 const si = require("systeminformation");
 const cors = require("cors");
 const multer = require("multer");
@@ -11,6 +11,23 @@ app.use(express.json());
 app.use(cors());
 
 const ROOT = path.resolve(__dirname, "..");
+
+// Pasta que contém os I/Os do removedor de fundo
+const REMBG_DIR    = path.join(ROOT, "Removedor-de-Fundo");
+const REMBG_INPUT  = path.join(REMBG_DIR, "input");
+const REMBG_OUTPUT = path.join(REMBG_DIR, "output");
+const REMBG_RGBA   = path.join(REMBG_DIR, "output_rgba");
+const REMBG_WHITE  = path.join(REMBG_DIR, "output_white");
+
+// Scripts Python na RAIZ do projeto
+const INFERENCE = path.join(ROOT, "run", "Inference.py");
+const CONFIG    = path.join(ROOT, "configs", "extra_dataset", "Plus_Ultra.yaml");
+const CONVERTER = path.join(ROOT, "converter_branco.py");
+
+// Python: .venv dentro de Removedor-de-Fundo
+const PY_LOCAL = path.join(REMBG_DIR, ".venv", "Scripts", "python.exe");
+const PY_FINAL = fs.existsSync(PY_LOCAL) ? PY_LOCAL : "python";
+
 const ENGINE_DIR = path.join(ROOT, "engine");
 const EXE = path.join(ENGINE_DIR, "realesrgan-ncnn-vulkan.exe");
 
@@ -19,8 +36,12 @@ const OUTPUT_DIR = path.join(ROOT, "output");
 const LOG_DIR = path.join(ROOT, "logs");
 const LOG_FILE = path.join(LOG_DIR, "log.txt");
 
+console.log("PY_LOCAL:", PY_LOCAL);
+console.log("PY_LOCAL existe?", fs.existsSync(PY_LOCAL));
+console.log("INFERENCE:", INFERENCE);
+
 function ensureDirs() {
-  [LOG_DIR, OUTPUT_DIR, INPUT_DIR].forEach((dir) => {
+  [LOG_DIR, OUTPUT_DIR, INPUT_DIR, REMBG_INPUT, REMBG_OUTPUT, REMBG_RGBA, REMBG_WHITE].forEach((dir) => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   });
 }
@@ -39,7 +60,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// ─── Sistema ─────────────────────────────────────────────────────────────────
+// ─── Sistema ──────────────────────────────────────────────────────────
 app.get("/api/system", async (req, res) => {
   try {
     const [cpu, mem, memLayout, os, disk, system] = await Promise.all([
@@ -269,6 +290,156 @@ app.post("/api/remove-watermark", upload.single("image"), async (req, res) => {
   }
 });
 
+// ─── Remove Background: Inference.py via Python ───────────────────────────────
+app.post("/api/remove-background", upload.single("image"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "Nenhum arquivo recebido." });
+
+  if (running) {
+    return res.status(409).json({ error: "Já existe um processamento em andamento." });
+  }
+
+  ensureDirs();
+  running = true;
+
+  const fileName = req.file.originalname;
+  const baseName = path.parse(fileName).name;
+  const modo     = req.body.mode || "transparent";
+
+  console.log(`[REMOVE-BG] Arquivo: ${fileName} | Modo: ${modo}`);
+
+  // Copia imagem pro input do removedor de fundo
+  const destInput = path.join(REMBG_INPUT, fileName);
+  fs.copyFileSync(req.file.path, destInput);
+  fs.unlinkSync(req.file.path);
+
+  console.log(`[REMOVE-BG] Python: ${PY_FINAL}`);
+
+  if (modo === "transparent") {
+    // ── Step único: Inference.py --type rgba ─────────────────────────────────
+    let responseSent = false; // ← flag aqui no modo transparente
+
+    // modo transparent
+    const proc = spawn(PY_FINAL, [
+      INFERENCE,
+      "--config", CONFIG,
+      "--source", REMBG_INPUT,
+      "--dest",   REMBG_OUTPUT,
+      "--type",   "rgba",
+    ], { cwd: ROOT, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+
+    proc.stdout.on("data", d => console.log("[REMBG-OUT]", d.toString().trim()));
+    proc.stderr.on("data", d => console.log("[REMBG-ERR]", d.toString().trim()));
+
+    proc.on("close", (code) => {
+      running = false;
+      if (responseSent) return; // ← guarda
+      responseSent = true;
+
+      if (code !== 0) {
+        return res.status(500).json({ error: `Inference.py falhou (code ${code})` });
+      }
+
+      const outputFile = baseName + ".png";
+      const outputPath = path.join(REMBG_OUTPUT, outputFile);
+
+      if (!fs.existsSync(outputPath)) {
+        return res.status(500).json({ error: `Output transparente não encontrado: ${outputPath}` });
+      }
+
+      const finalName = baseName + "_transparent.png";
+      const finalPath = path.join(OUTPUT_DIR, finalName);
+      fs.copyFileSync(outputPath, finalPath);
+
+      console.log(`[REMOVE-BG] Transparente concluído: ${finalName}`);
+      res.json({ success: true, fileName: finalName });
+    });
+
+    proc.on("error", (err) => {
+      running = false;
+      if (responseSent) return; // ← guarda
+      responseSent = true;
+      console.error("[REMOVE-BG] Erro ao chamar Inference.py:", err);
+      res.status(500).json({ error: "Erro ao iniciar Inference.py" });
+    });
+
+  } else {
+    // ── Step 1: Inference.py → output_rgba ───────────────────────────────────
+    let responseSent = false; // ← flag aqui no modo branco (cobre step1 e step2)
+
+    // modo white – step1
+    const step1 = spawn(PY_FINAL, [
+      INFERENCE,
+      "--config", CONFIG,
+      "--source", REMBG_INPUT,
+      "--dest",   REMBG_RGBA,
+      "--type",   "rgba",
+    ], { cwd: ROOT, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+
+    step1.stdout.on("data", d => console.log("[REMBG-STEP1-OUT]", d.toString().trim()));
+    step1.stderr.on("data", d => console.log("[REMBG-STEP1-ERR]", d.toString().trim()));
+
+    step1.on("close", (code1) => {
+      if (responseSent) return; // ← guarda
+
+      if (code1 !== 0) {
+        running = false;
+        responseSent = true;
+        return res.status(500).json({ error: `Inference.py falhou (code ${code1})` });
+      }
+
+      // modo white – step2
+      const step2 = spawn(PY_FINAL, [CONVERTER], {
+        cwd: ROOT,
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      step2.stdout.on("data", d => console.log("[REMBG-STEP2-OUT]", d.toString().trim()));
+      step2.stderr.on("data", d => console.log("[REMBG-STEP2-ERR]", d.toString().trim()));
+
+      step2.on("close", (code2) => {
+        running = false;
+        if (responseSent) return; // ← guarda
+        responseSent = true;
+
+        if (code2 !== 0) {
+          return res.status(500).json({ error: `converter_branco.py falhou (code ${code2})` });
+        }
+
+        const outputFile = baseName + ".jpg";
+        const outputPath = path.join(REMBG_WHITE, outputFile);
+
+        if (!fs.existsSync(outputPath)) {
+          return res.status(500).json({ error: `Output branco não encontrado: ${outputPath}` });
+        }
+
+        const finalName = baseName + "_white.jpg";
+        const finalPath = path.join(OUTPUT_DIR, finalName);
+        fs.copyFileSync(outputPath, finalPath);
+
+        console.log(`[REMOVE-BG] Branco concluído: ${finalName}`);
+        res.json({ success: true, fileName: finalName });
+      });
+
+      step2.on("error", (err) => {
+        running = false;
+        if (responseSent) return; // ← guarda
+        responseSent = true;
+        console.error("[REMBG-STEP2] Erro ao chamar converter_branco.py:", err);
+        res.status(500).json({ error: "Erro ao iniciar converter_branco.py" });
+      });
+    });
+
+    step1.on("error", (err) => {
+      running = false;
+      if (responseSent) return; // ← guarda
+      responseSent = true;
+      console.error("[REMBG-STEP1] Erro ao chamar Inference.py:", err);
+      res.status(500).json({ error: "Erro ao iniciar Inference.py" });
+    });
+  }
+});
+
 // ─── Status: frontend faz polling aqui ───────────────────────────────────────
 app.get("/api/status", (req, res) => {
   res.json({ running });
@@ -352,5 +523,13 @@ app.get("/api/metrics", (req, res) => {
 app.get("/", (req, res) => {
   res.send("API está funcionando 🚀");
 });
+
+console.log("ROOT:", ROOT);
+console.log("INPUT_DIR:", INPUT_DIR);
+console.log("OUTPUT_DIR:", OUTPUT_DIR);
+console.log("EXE:", EXE);
+console.log("EXE existe?", fs.existsSync(EXE));
+console.log("REMBG_DIR:", REMBG_DIR);
+console.log("REMBG_DIR existe?", fs.existsSync(REMBG_DIR));
 
 app.listen(3001, () => console.log("API on http://localhost:3001"));
