@@ -5,6 +5,7 @@ const { spawn } = require("child_process");
 const si = require("systeminformation");
 const cors = require("cors");
 const multer = require("multer");
+const sharp = require("sharp"); // Certifique-se de que sharp está instalado: npm install sharp
 
 const app = express();
 app.use(express.json());
@@ -23,6 +24,10 @@ const REMBG_WHITE  = path.join(REMBG_DIR, "output_white");
 const INFERENCE = path.join(ROOT, "run", "Inference.py");
 const CONFIG    = path.join(ROOT, "configs", "extra_dataset", "Plus_Ultra.yaml");
 const CONVERTER = path.join(ROOT, "converter_branco.py");
+
+// Novos arquivos .bat para remoção de fundo
+const REMBG_BAT_TRANSPARENT = path.join(ROOT, "remover_fundo.bat");
+const REMBG_BAT_WHITE       = path.join(ROOT, "remover_fundo_branco.bat");
 
 // Python: .venv dentro de Removedor-de-Fundo
 const PY_LOCAL = path.join(REMBG_DIR, ".venv", "Scripts", "python.exe");
@@ -63,13 +68,15 @@ const upload = multer({ storage });
 // ─── Sistema ──────────────────────────────────────────────────────────
 app.get("/api/system", async (req, res) => {
   try {
-    const [cpu, mem, memLayout, os, disk, system] = await Promise.all([
+    // CORREÇÃO AQUI: Garanta que 'fsSize' esteja na desestruturação
+    const [cpu, mem, memLayout, os, fileSystemSize, system, diskLayout] = await Promise.all([
       si.cpu(),
       si.mem(),
       si.memLayout(),
       si.osInfo(),
-      si.fsSize(),
+      si.fsSize(), // Esta função retorna os dados que você quer para 'fileSystemSize'
       si.system(),
+      si.diskLayout(),
     ]);
 
     // Tipo de RAM (DDR3, DDR4, DDR5 etc)
@@ -78,9 +85,28 @@ app.get("/api/system", async (req, res) => {
       : 'N/D';
 
     // Armazenamento: disco principal
-    const mainDisk = disk.find(d => d.mount === 'C:' || d.mount === '/') || disk[0];
-    const storageTotal = mainDisk ? Math.round(mainDisk.size / (1024 ** 3)) : null;
-    const storageUsed  = mainDisk ? Math.round(mainDisk.used / (1024 ** 3)) : null;
+    // Use 'fileSystemSize' aqui, que é o resultado de si.fsSize()
+    const mainFs = fileSystemSize.find(d => d.mount === 'C:' || d.mount === '/') || fileSystemSize[0];
+    const storageTotal = mainFs ? Math.round(mainFs.size / (1024 ** 3)) : null;
+    const storageUsed  = mainFs ? Math.round(mainFs.used / (1024 ** 3)) : null;
+    const storageFree  = mainFs ? Math.round(mainFs.available / (1024 ** 3)) : null; // Espaço livre
+
+    // Detalhes do disco físico principal (ex: SSD/HDD, fabricante)
+    let mainDiskType = 'N/D';
+    let mainDiskManufacturer = 'N/D';
+    if (diskLayout.length > 0) {
+      // Tenta associar o disco lógico (mainFs) com um disco físico (diskLayout)
+      // Note que 'mainFs.fs' pode ser o nome do dispositivo ou ponto de montagem,
+      // dependendo do SO e da estrutura, pode precisar de ajuste fino.
+      const physicalDisk = diskLayout.find(d => mainFs && d.device === mainFs.fs);
+      if (physicalDisk) {
+        mainDiskType = physicalDisk.type || 'N/D'; // 'SSD', 'HDD'
+        mainDiskManufacturer = physicalDisk.vendor || 'N/D';
+      } else if (diskLayout[0]) { // Se não encontrar, pega o primeiro físico como fallback
+        mainDiskType = diskLayout[0].type || 'N/D';
+        mainDiskManufacturer = diskLayout[0].vendor || 'N/D';
+      }
+    }
 
     res.json({
       machineId:    system.uuid,
@@ -93,6 +119,9 @@ app.get("/api/system", async (req, res) => {
       platform:     `${os.distro} ${os.release} (${os.arch})`, // ex: Windows 11 22H2 (x64)
       storageTotal,
       storageUsed,
+      storageFree,
+      mainDiskType,
+      mainDiskManufacturer,
     });
   } catch (err) {
     console.error("[SYSTEM]", err);
@@ -290,7 +319,7 @@ app.post("/api/remove-watermark", upload.single("image"), async (req, res) => {
   }
 });
 
-// ─── Remove Background: Inference.py via Python ───────────────────────────────
+// ─── Remove Background: Inference.py via Python ou BAT ───────────────────────────────
 app.post("/api/remove-background", upload.single("image"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "Nenhum arquivo recebido." });
 
@@ -303,141 +332,90 @@ app.post("/api/remove-background", upload.single("image"), async (req, res) => {
 
   const fileName = req.file.originalname;
   const baseName = path.parse(fileName).name;
-  const modo     = req.body.mode || "transparent";
+  const modo     = req.body.mode || "transparent"; // Pode ser "transparent" ou "white"
 
   console.log(`[REMOVE-BG] Arquivo: ${fileName} | Modo: ${modo}`);
 
   // Copia imagem pro input do removedor de fundo
   const destInput = path.join(REMBG_INPUT, fileName);
   fs.copyFileSync(req.file.path, destInput);
-  fs.unlinkSync(req.file.path);
+  fs.unlinkSync(req.file.path); // Remove o arquivo temporário do multer
 
-  console.log(`[REMOVE-BG] Python: ${PY_FINAL}`);
+  let batToExecute;
+  let finalOutputFolder;
+  let expectedOutputExtension;
+  let finalOutputSuffix;
 
   if (modo === "transparent") {
-    // ── Step único: Inference.py --type rgba ─────────────────────────────────
-    let responseSent = false; // ← flag aqui no modo transparente
-
-    // modo transparent
-    const proc = spawn(PY_FINAL, [
-      INFERENCE,
-      "--config", CONFIG,
-      "--source", REMBG_INPUT,
-      "--dest",   REMBG_OUTPUT,
-      "--type",   "rgba",
-    ], { cwd: ROOT, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
-
-    proc.stdout.on("data", d => console.log("[REMBG-OUT]", d.toString().trim()));
-    proc.stderr.on("data", d => console.log("[REMBG-ERR]", d.toString().trim()));
-
-    proc.on("close", (code) => {
-      running = false;
-      if (responseSent) return; // ← guarda
-      responseSent = true;
-
-      if (code !== 0) {
-        return res.status(500).json({ error: `Inference.py falhou (code ${code})` });
-      }
-
-      const outputFile = baseName + ".png";
-      const outputPath = path.join(REMBG_OUTPUT, outputFile);
-
-      if (!fs.existsSync(outputPath)) {
-        return res.status(500).json({ error: `Output transparente não encontrado: ${outputPath}` });
-      }
-
-      const finalName = baseName + "_transparent.png";
-      const finalPath = path.join(OUTPUT_DIR, finalName);
-      fs.copyFileSync(outputPath, finalPath);
-
-      console.log(`[REMOVE-BG] Transparente concluído: ${finalName}`);
-      res.json({ success: true, fileName: finalName });
-    });
-
-    proc.on("error", (err) => {
-      running = false;
-      if (responseSent) return; // ← guarda
-      responseSent = true;
-      console.error("[REMOVE-BG] Erro ao chamar Inference.py:", err);
-      res.status(500).json({ error: "Erro ao iniciar Inference.py" });
-    });
-
+    batToExecute = REMBG_BAT_TRANSPARENT;
+    finalOutputFolder = REMBG_OUTPUT; // O .bat transparente gera em REMBG_OUTPUT
+    expectedOutputExtension = ".png";
+    finalOutputSuffix = "_transparent.png";
+  } else if (modo === "white") {
+    batToExecute = REMBG_BAT_WHITE;
+    finalOutputFolder = REMBG_WHITE; // O .bat branco gera em REMBG_WHITE
+    expectedOutputExtension = ".jpg"; // O converter_branco.py gera JPG
+    finalOutputSuffix = "_white.jpg";
   } else {
-    // ── Step 1: Inference.py → output_rgba ───────────────────────────────────
-    let responseSent = false; // ← flag aqui no modo branco (cobre step1 e step2)
-
-    // modo white – step1
-    const step1 = spawn(PY_FINAL, [
-      INFERENCE,
-      "--config", CONFIG,
-      "--source", REMBG_INPUT,
-      "--dest",   REMBG_RGBA,
-      "--type",   "rgba",
-    ], { cwd: ROOT, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
-
-    step1.stdout.on("data", d => console.log("[REMBG-STEP1-OUT]", d.toString().trim()));
-    step1.stderr.on("data", d => console.log("[REMBG-STEP1-ERR]", d.toString().trim()));
-
-    step1.on("close", (code1) => {
-      if (responseSent) return; // ← guarda
-
-      if (code1 !== 0) {
-        running = false;
-        responseSent = true;
-        return res.status(500).json({ error: `Inference.py falhou (code ${code1})` });
-      }
-
-      // modo white – step2
-      const step2 = spawn(PY_FINAL, [CONVERTER], {
-        cwd: ROOT,
-        windowsHide: true,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-
-      step2.stdout.on("data", d => console.log("[REMBG-STEP2-OUT]", d.toString().trim()));
-      step2.stderr.on("data", d => console.log("[REMBG-STEP2-ERR]", d.toString().trim()));
-
-      step2.on("close", (code2) => {
-        running = false;
-        if (responseSent) return; // ← guarda
-        responseSent = true;
-
-        if (code2 !== 0) {
-          return res.status(500).json({ error: `converter_branco.py falhou (code ${code2})` });
-        }
-
-        const outputFile = baseName + ".jpg";
-        const outputPath = path.join(REMBG_WHITE, outputFile);
-
-        if (!fs.existsSync(outputPath)) {
-          return res.status(500).json({ error: `Output branco não encontrado: ${outputPath}` });
-        }
-
-        const finalName = baseName + "_white.jpg";
-        const finalPath = path.join(OUTPUT_DIR, finalName);
-        fs.copyFileSync(outputPath, finalPath);
-
-        console.log(`[REMOVE-BG] Branco concluído: ${finalName}`);
-        res.json({ success: true, fileName: finalName });
-      });
-
-      step2.on("error", (err) => {
-        running = false;
-        if (responseSent) return; // ← guarda
-        responseSent = true;
-        console.error("[REMBG-STEP2] Erro ao chamar converter_branco.py:", err);
-        res.status(500).json({ error: "Erro ao iniciar converter_branco.py" });
-      });
-    });
-
-    step1.on("error", (err) => {
-      running = false;
-      if (responseSent) return; // ← guarda
-      responseSent = true;
-      console.error("[REMBG-STEP1] Erro ao chamar Inference.py:", err);
-      res.status(500).json({ error: "Erro ao iniciar Inference.py" });
-    });
+    running = false;
+    return res.status(400).json({ error: "Modo de remoção de fundo inválido. Use 'transparent' ou 'white'." });
   }
+
+  console.log(`[REMOVE-BG] Usando BAT: ${batToExecute}`);
+  console.log(`[REMOVE-BG] Python final path: ${PY_FINAL}`);
+
+  // Os argumentos para o .bat agora incluem o caminho do Python
+  // NÃO adicione aspas aqui, o spawn e o cmd.exe lidarão com os espaços
+  const args = [
+    '/c',
+    batToExecute, // <-- REMOVA AS ASPAS AQUI
+    PY_FINAL      // <-- REMOVA AS ASPAS AQUI
+  ];
+
+  const proc = spawn('cmd.exe', args, {
+    cwd: ROOT, // O diretório de trabalho do .bat é a raiz do projeto
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  let responseSent = false; // Flag para garantir que a resposta seja enviada apenas uma vez
+
+  proc.stdout.on("data", d => console.log(`[REMBG-BAT-OUT] ${modo}:`, d.toString().trim()));
+  proc.stderr.on("data", d => console.log(`[REMBG-BAT-ERR] ${modo}:`, d.toString().trim()));
+
+  proc.on("close", (code) => {
+    running = false;
+    if (responseSent) return;
+    responseSent = true;
+    console.log(`[REMOVE-BG] BAT ${modo} finalizado com code ${code}`);
+
+    if (code !== 0) {
+      return res.status(500).json({ error: `O script .bat para remoção de fundo (${modo}) falhou (code ${code})` });
+    }
+
+    const outputFile = baseName + expectedOutputExtension;
+    const outputPath = path.join(finalOutputFolder, outputFile);
+
+    if (!fs.existsSync(outputPath)) {
+      console.error(`[REMOVE-BG] Output ${modo} não encontrado: ${outputPath}`);
+      return res.status(500).json({ error: `Processamento concluído mas output ${modo} não foi gerado.` });
+    }
+
+    const finalName = baseName + finalOutputSuffix;
+    const finalPath = path.join(OUTPUT_DIR, finalName);
+    fs.copyFileSync(outputPath, finalPath);
+
+    console.log(`[REMOVE-BG] ${modo} concluído: ${finalName}`);
+    res.json({ success: true, fileName: finalName });
+  });
+
+  proc.on("error", (err) => {
+    running = false;
+    if (responseSent) return; // <-- Verificação adicionada
+    responseSent = true;      // <-- Flag setada
+    console.error(`[REMOVE-BG] Erro ao chamar o BAT ${modo}:`, err);
+    res.status(500).json({ error: `Erro ao iniciar o processamento do BAT para remoção de fundo (${modo}).` });
+  });
 });
 
 // ─── Status: frontend faz polling aqui ───────────────────────────────────────
