@@ -5,7 +5,8 @@ const { spawn } = require("child_process");
 const si = require("systeminformation");
 const cors = require("cors");
 const multer = require("multer");
-const sharp = require("sharp"); // Certifique-se de que sharp está instalado: npm install sharp
+const sharp = require("sharp");
+const WebSocket = require('ws'); // <-- NOVO: Importa WebSocket
 
 const app = express();
 app.use(express.json());
@@ -15,10 +16,10 @@ const ROOT = path.resolve(__dirname, "..");
 
 // Pasta que contém os I/Os do removedor de fundo
 const REMBG_DIR    = path.join(ROOT, "Removedor-de-Fundo");
-const REMBG_INPUT  = path.join(REMBG_DIR, "input");
-const REMBG_OUTPUT = path.join(REMBG_DIR, "output");
-const REMBG_RGBA   = path.join(REMBG_DIR, "output_rgba");
-const REMBG_WHITE  = path.join(REMBG_DIR, "output_white");
+const REMBG_INPUT  = path.join(ROOT, "Input");
+const REMBG_OUTPUT = path.join(ROOT, "output");
+const REMBG_RGBA   = path.join(ROOT, "output_rgba");
+const REMBG_WHITE  = path.join(ROOT, "output_white");
 
 // Scripts Python na RAIZ do projeto
 const INFERENCE = path.join(ROOT, "run", "Inference.py");
@@ -30,7 +31,7 @@ const REMBG_BAT_TRANSPARENT = path.join(ROOT, "remover_fundo.bat");
 const REMBG_BAT_WHITE       = path.join(ROOT, "remover_fundo_branco.bat");
 
 // Python: .venv dentro de Removedor-de-Fundo
-const PY_LOCAL = path.join(REMBG_DIR, ".venv", "Scripts", "python.exe");
+const PY_LOCAL = path.join(ROOT, ".venv", "Scripts", "python.exe");
 const PY_FINAL = fs.existsSync(PY_LOCAL) ? PY_LOCAL : "python";
 
 const ENGINE_DIR = path.join(ROOT, "engine");
@@ -53,6 +54,42 @@ function ensureDirs() {
 
 let running = false;
 
+// ─── WebSocket Server ─────────────────────────────────────────────────────────
+const wss = new WebSocket.Server({ noServer: true });
+
+const clients = new Map(); // taskId -> WebSocket
+
+wss.on('connection', ws => {
+  console.log('Cliente WebSocket conectado.');
+  ws.on('message', message => {
+    const msg = JSON.parse(message.toString());
+    if (msg.type === 'register' && msg.taskId) {
+      clients.set(msg.taskId, ws);
+      console.log(`Cliente registrado para taskId: ${msg.taskId}`);
+    }
+  });
+  ws.on('close', () => {
+    for (let [taskId, clientWs] of clients.entries()) {
+      if (clientWs === ws) {
+        clients.delete(taskId);
+        console.log(`Cliente para taskId ${taskId} desconectado.`);
+        break;
+      }
+    }
+    console.log('Cliente WebSocket desconectado.');
+  });
+  ws.on('error', error => {
+    console.error('Erro no WebSocket:', error);
+  });
+});
+
+function sendWsMessage(taskId, type, payload) {
+  const ws = clients.get(taskId);
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ taskId, type, ...payload }));
+  }
+}
+
 // ─── Multer: salva imagem direto em /Input com nome original ───
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -68,41 +105,33 @@ const upload = multer({ storage });
 // ─── Sistema ──────────────────────────────────────────────────────────
 app.get("/api/system", async (req, res) => {
   try {
-    // CORREÇÃO AQUI: Garanta que 'fsSize' esteja na desestruturação
     const [cpu, mem, memLayout, os, fileSystemSize, system, diskLayout] = await Promise.all([
       si.cpu(),
       si.mem(),
       si.memLayout(),
       si.osInfo(),
-      si.fsSize(), // Esta função retorna os dados que você quer para 'fileSystemSize'
+      si.fsSize(),
       si.system(),
       si.diskLayout(),
     ]);
 
-    // Tipo de RAM (DDR3, DDR4, DDR5 etc)
     const ramType = memLayout.length > 0
       ? [...new Set(memLayout.map(m => m.type).filter(Boolean))].join(', ')
       : 'N/D';
 
-    // Armazenamento: disco principal
-    // Use 'fileSystemSize' aqui, que é o resultado de si.fsSize()
     const mainFs = fileSystemSize.find(d => d.mount === 'C:' || d.mount === '/') || fileSystemSize[0];
     const storageTotal = mainFs ? Math.round(mainFs.size / (1024 ** 3)) : null;
     const storageUsed  = mainFs ? Math.round(mainFs.used / (1024 ** 3)) : null;
-    const storageFree  = mainFs ? Math.round(mainFs.available / (1024 ** 3)) : null; // Espaço livre
+    const storageFree  = mainFs ? Math.round(mainFs.available / (1024 ** 3)) : null;
 
-    // Detalhes do disco físico principal (ex: SSD/HDD, fabricante)
     let mainDiskType = 'N/D';
     let mainDiskManufacturer = 'N/D';
     if (diskLayout.length > 0) {
-      // Tenta associar o disco lógico (mainFs) com um disco físico (diskLayout)
-      // Note que 'mainFs.fs' pode ser o nome do dispositivo ou ponto de montagem,
-      // dependendo do SO e da estrutura, pode precisar de ajuste fino.
       const physicalDisk = diskLayout.find(d => mainFs && d.device === mainFs.fs);
       if (physicalDisk) {
-        mainDiskType = physicalDisk.type || 'N/D'; // 'SSD', 'HDD'
+        mainDiskType = physicalDisk.type || 'N/D';
         mainDiskManufacturer = physicalDisk.vendor || 'N/D';
-      } else if (diskLayout[0]) { // Se não encontrar, pega o primeiro físico como fallback
+      } else if (diskLayout[0]) {
         mainDiskType = diskLayout[0].type || 'N/D';
         mainDiskManufacturer = diskLayout[0].vendor || 'N/D';
       }
@@ -111,12 +140,12 @@ app.get("/api/system", async (req, res) => {
     res.json({
       machineId:    system.uuid,
       cpuName:      `${cpu.manufacturer} ${cpu.brand}`,
-      cpuCores:     cpu.physicalCores,   // núcleos físicos
-      cpuThreads:   cpu.cores,           // threads lógicos
-      cpuSpeed:     cpu.speed,           // GHz
+      cpuCores:     cpu.physicalCores,
+      cpuThreads:   cpu.cores,
+      cpuSpeed:     cpu.speed,
       ramGB:        Math.round(mem.total / 1024 / 1024 / 1024),
-      ramType,                           // DDR4, DDR5 etc
-      platform:     `${os.distro} ${os.release} (${os.arch})`, // ex: Windows 11 22H2 (x64)
+      ramType,
+      platform:     `${os.distro} ${os.release} (${os.arch})`,
       storageTotal,
       storageUsed,
       storageFree,
@@ -139,6 +168,7 @@ app.post("/api/upload", upload.single("image"), (req, res) => {
 });
 
 // ─── Upscale: dispara o realesrgan direto (sem BAT) ──────────────────────────
+// Este endpoint não é usado pelo frontend atualmente, mas mantido por segurança
 app.post("/api/upscale", (req, res) => {
   if (running) {
     return res.status(409).json({ success: false, message: "Já existe um processamento em andamento." });
@@ -148,14 +178,12 @@ app.post("/api/upscale", (req, res) => {
   running = true;
   fs.writeFileSync(LOG_FILE, "", "utf8");
 
-  // Conta quantos arquivos estão no input
   const inputFiles = fs.readdirSync(INPUT_DIR).filter(f =>
     ['.jpg', '.jpeg', '.png', '.webp'].includes(path.extname(f).toLowerCase())
   );
   const totalImagens = inputFiles.length;
   const startTime = Date.now();
 
-  // Salva estado inicial das métricas
   const METRICS_FILE = path.join(ROOT, "logs", "metrics.json");
   fs.writeFileSync(METRICS_FILE, JSON.stringify({
     status: "running",
@@ -191,7 +219,6 @@ app.post("/api/upscale", (req, res) => {
       ? Math.round(tempoTotalMs / totalImagens)
       : 0;
 
-    // Salva métricas finais
     fs.writeFileSync(METRICS_FILE, JSON.stringify({
       status: code === 0 ? "done" : "error",
       totalImagens,
@@ -214,11 +241,19 @@ app.post("/api/upscale", (req, res) => {
 
 // ─── Enhance: dispara run_server.bat (Real-ESRGAN) ───────────────────────────
 app.post("/api/enhance", upload.single("image"), async (req, res) => {
+  const taskId = req.headers['x-task-id']; // <-- NOVO: Pega o taskId do cabeçalho
+  console.log("[ENHANCE] Requisição recebida. TaskId:", taskId, "Body:", req.body); // Debug
+
+  if (!taskId) {
+    return res.status(400).json({ error: "taskId é obrigatório (via cabeçalho X-Task-Id)." });
+  }
   if (!req.file) {
+    sendWsMessage(taskId, 'error', { message: "Nenhum arquivo recebido." });
     return res.status(400).json({ error: "Nenhum arquivo recebido." });
   }
 
   if (running) {
+    sendWsMessage(taskId, 'error', { message: "Já existe um processamento em andamento." });
     return res.status(409).json({ error: "Já existe um processamento em andamento." });
   }
 
@@ -231,32 +266,34 @@ app.post("/api/enhance", upload.single("image"), async (req, res) => {
   const outputPath = path.join(OUTPUT_DIR, outputFile);
 
   console.log(`[ENHANCE] Arquivo recebido: ${fileName}`);
+  sendWsMessage(taskId, 'log', { logLine: `[ENHANCE] Arquivo recebido: ${fileName}` });
 
-  // Remove arquivos antigos do /Input, mantém só o recém-chegado
   for (const arq of fs.readdirSync(INPUT_DIR)) {
     if (arq !== fileName) {
       fs.unlinkSync(path.join(INPUT_DIR, arq));
       console.log(`[ENHANCE] Removido do Input: ${arq}`);
+      sendWsMessage(taskId, 'log', { logLine: `[ENHANCE] Removido do Input: ${arq}` });
     }
   }
 
-  // Remove output antigo do mesmo arquivo
   if (fs.existsSync(outputPath)) {
     fs.unlinkSync(outputPath);
     console.log(`[ENHANCE] Output antigo removido: ${outputFile}`);
+    sendWsMessage(taskId, 'log', { logLine: `[ENHANCE] Output antigo removido: ${outputFile}` });
   }
 
   await new Promise(resolve => setTimeout(resolve, 500));
 
   const args = [
-    "-i", path.join(INPUT_DIR, fileName),  // arquivo → arquivo
-    "-o", outputPath,                       // arquivo de saída direto
+    "-i", path.join(INPUT_DIR, fileName),
+    "-o", outputPath,
     "-s", "4",
     "-t", "256",
     "-n", "realesrgan-x4plus",
   ];
 
   console.log(`[ENHANCE] Chamando EXE com args:`, args.join(" "));
+  sendWsMessage(taskId, 'log', { logLine: `[ENHANCE] Chamando EXE com args: ${args.join(" ")}` });
 
   const proc = spawn(EXE, args, {
     cwd: ENGINE_DIR,
@@ -264,157 +301,307 @@ app.post("/api/enhance", upload.single("image"), async (req, res) => {
     stdio: ["ignore", "pipe", "pipe"],
   });
 
-  proc.stdout.on("data", d => console.log("[RR-OUT]", d.toString().trim()));
-  proc.stderr.on("data", d => console.log("[RR-ERR]", d.toString().trim()));
+  proc.stdout.on("data", d => {
+    const logLine = d.toString().trim();
+    console.log("[RR-OUT]", logLine);
+    sendWsMessage(taskId, 'log', { logLine: `[RR-OUT] ${logLine}` });
+
+    const progressMatch = logLine.match(/(\d{1,3}(?:[.,]\d{1,2})?)%/);
+    if (progressMatch) {
+      const progress = parseFloat(progressMatch[1].replace(',', '.'));
+      sendWsMessage(taskId, 'progress', { progress: Math.min(progress, 99) });
+    }
+  });
+  proc.stderr.on("data", d => {
+    const logLine = d.toString().trim();
+    console.log("[RR-ERR]", logLine);
+    sendWsMessage(taskId, 'log', { logLine: `[RR-ERR] ${logLine}` });
+
+    const progressMatch = logLine.match(/(\d{1,3}(?:[.,]\d{1,2})?)%/);
+    if (progressMatch) {
+      const progress = parseFloat(progressMatch[1].replace(',', '.'));
+      sendWsMessage(taskId, 'progress', { progress: Math.min(progress, 99) });
+    }
+  });
 
   proc.on("close", (code) => {
     running = false;
     console.log(`[ENHANCE] realesrgan finalizado com code ${code}`);
+    sendWsMessage(taskId, 'log', { logLine: `[ENHANCE] realesrgan finalizado com code ${code}` });
 
     if (code !== 0) {
+      sendWsMessage(taskId, 'error', { message: `realesrgan falhou (code ${code})` });
       return res.status(500).json({ error: `realesrgan falhou (code ${code})` });
     }
 
     if (!fs.existsSync(outputPath)) {
       console.error(`[ENHANCE] Output não encontrado: ${outputPath}`);
+      sendWsMessage(taskId, 'error', { message: "Processamento concluído mas output não foi gerado." });
       return res.status(500).json({ error: "Processamento concluído mas output não foi gerado." });
     }
 
     console.log(`[ENHANCE] Output confirmado: ${outputFile}`);
+    sendWsMessage(taskId, 'log', { logLine: `[ENHANCE] Output confirmado: ${outputFile}` });
+    sendWsMessage(taskId, 'complete', { fileName: outputFile });
     return res.json({ success: true, fileName: outputFile });
   });
 
   proc.on("error", (err) => {
     running = false;
     console.error("[ENHANCE] Erro ao chamar EXE:", err);
+    sendWsMessage(taskId, 'error', { message: "Erro ao iniciar o processamento." });
     return res.status(500).json({ error: "Erro ao iniciar o processamento." });
   });
 });
 
 // ─── Remove Watermark: blur agressivo sobre a imagem inteira ─────────────────
 app.post("/api/remove-watermark", upload.single("image"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "Nenhum arquivo recebido." });
+  const taskId = req.headers['x-task-id'];
+  console.log("[REMOVE-WM] Requisição recebida. TaskId:", taskId, "Body:", req.body);
+
+  if (!taskId) {
+    return res.status(400).json({ error: "taskId é obrigatório (via cabeçalho X-Task-Id)." });
+  }
+  if (!req.file) {
+    sendWsMessage(taskId, 'error', { message: "Nenhum arquivo recebido." });
+    return res.status(400).json({ error: "Nenhum arquivo recebido." });
+  }
 
   const inputPath  = req.file.path;
   const outputName = path.parse(req.file.originalname).name + "_nowm.png";
   const outputPath = path.join(OUTPUT_DIR, outputName);
 
+  sendWsMessage(taskId, 'log', { logLine: `[REMOVE-WM] Iniciando remoção de marca d'água para ${req.file.originalname}` });
+  sendWsMessage(taskId, 'progress', { progress: 5 });
+
   try {
-    // Estratégia: reduz + amplia para suavizar marcas d'água semitransparentes
     const meta = await sharp(inputPath).metadata();
     const w = meta.width;
     const h = meta.height;
 
+    sendWsMessage(taskId, 'progress', { progress: 20 });
+
     await sharp(inputPath)
-      .resize(Math.round(w * 0.5), Math.round(h * 0.5))   // reduz 50%
-      .resize(w, h, { kernel: sharp.kernel.lanczos3 })     // volta ao tamanho
+      .resize(Math.round(w * 0.5), Math.round(h * 0.5))
+      .resize(w, h, { kernel: sharp.kernel.lanczos3 })
       .png()
       .toFile(outputPath);
 
+    sendWsMessage(taskId, 'progress', { progress: 80 });
+
     fs.unlinkSync(inputPath);
+    sendWsMessage(taskId, 'log', { logLine: `[REMOVE-WM] Arquivo temporário removido: ${inputPath}` });
+    sendWsMessage(taskId, 'complete', { fileName: outputName });
     res.json({ success: true, fileName: outputName });
   } catch (err) {
     console.error("[REMOVE-WATERMARK]", err);
+    sendWsMessage(taskId, 'error', { message: "Falha ao processar imagem." });
     res.status(500).json({ error: "Falha ao processar imagem." });
   }
 });
 
-// ─── Remove Background: Inference.py via Python ou BAT ───────────────────────────────
+// ─── Remove Background: via BAT ───────────────────────────────────────────────
 app.post("/api/remove-background", upload.single("image"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "Nenhum arquivo recebido." });
+  const taskId = req.headers["x-task-id"];
+  const modo = req.headers["x-bg-mode"] || "transparent";
 
+  if (!taskId) return res.status(400).json({ error: "taskId é obrigatório (via cabeçalho X-Task-Id)." });
+  if (!req.file) {
+    sendWsMessage(taskId, "error", { message: "Nenhum arquivo recebido." });
+    return res.status(400).json({ error: "Nenhum arquivo recebido." });
+  }
   if (running) {
+    sendWsMessage(taskId, "error", { message: "Já existe um processamento em andamento." });
     return res.status(409).json({ error: "Já existe um processamento em andamento." });
   }
 
   ensureDirs();
   running = true;
 
-  const fileName = req.file.originalname;
-  const baseName = path.parse(fileName).name;
-  const modo     = req.body.mode || "transparent"; // Pode ser "transparent" ou "white"
+  // Segurança/robustez: evita path estranho vindo do originalname
+  const originalName = path.basename(req.file.originalname);
+  const baseName = path.parse(originalName).name;
 
-  console.log(`[REMOVE-BG] Arquivo: ${fileName} | Modo: ${modo}`);
+  sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Arquivo: ${originalName} | Modo: ${modo}` });
+  sendWsMessage(taskId, "progress", { progress: 5 });
 
-  // Copia imagem pro input do removedor de fundo
-  const destInput = path.join(REMBG_INPUT, fileName);
+  // --- ADIÇÃO: Logar caminhos antes da cópia ---
+  console.log(`[REMOVE-BG-DEBUG] req.file.path (temp): ${req.file.path}`);
+  console.log(`[REMOVE-BG-DEBUG] REMBG_INPUT (destino): ${REMBG_INPUT}`);
+  console.log(`[REMOVE-BG-DEBUG] destInput (arquivo final): ${path.join(REMBG_INPUT, originalName)}`);
+  console.log(`[REMOVE-BG-DEBUG] REMBG_INPUT existe? ${fs.existsSync(REMBG_INPUT)}`);
+  // --- FIM DA ADIÇÃO ---
+
+  // Copia para pasta input do removedor
+const destInput = path.join(REMBG_INPUT, originalName);
+try {
   fs.copyFileSync(req.file.path, destInput);
-  fs.unlinkSync(req.file.path); // Remove o arquivo temporário do multer
+  fs.unlinkSync(req.file.path);
+} catch (e) {
+  running = false;
+  sendWsMessage(taskId, "error", { message: "Falha ao preparar arquivo de entrada." });
+  return res.status(500).json({ error: "Falha ao preparar arquivo de entrada." });
+}
 
-  let batToExecute;
-  let finalOutputFolder;
-  let expectedOutputExtension;
-  let finalOutputSuffix;
+sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Copiado para: ${destInput}` });
+sendWsMessage(taskId, "progress", { progress: 12 });
+
+// --- ADIÇÃO: Pequeno atraso para garantir que o arquivo seja visível ---
+await new Promise(resolve => setTimeout(resolve, 500)); // Espera 500ms
+sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Aguardando 500ms para sincronização do arquivo.` });
+// --- FIM DA ADIÇÃO ---
+
+let batToExecute, finalOutputFolder, expectedOutputExtension, finalOutputSuffix;
 
   if (modo === "transparent") {
     batToExecute = REMBG_BAT_TRANSPARENT;
-    finalOutputFolder = REMBG_OUTPUT; // O .bat transparente gera em REMBG_OUTPUT
+    finalOutputFolder = REMBG_RGBA;
     expectedOutputExtension = ".png";
     finalOutputSuffix = "_transparent.png";
   } else if (modo === "white") {
     batToExecute = REMBG_BAT_WHITE;
-    finalOutputFolder = REMBG_WHITE; // O .bat branco gera em REMBG_WHITE
-    expectedOutputExtension = ".jpg"; // O converter_branco.py gera JPG
+    finalOutputFolder = REMBG_WHITE;
+    expectedOutputExtension = ".jpg";
     finalOutputSuffix = "_white.jpg";
   } else {
     running = false;
-    return res.status(400).json({ error: "Modo de remoção de fundo inválido. Use 'transparent' ou 'white'." });
+    sendWsMessage(taskId, "error", { message: "Modo inválido. Use 'transparent' ou 'white'." });
+    return res.status(400).json({ error: "Modo inválido. Use 'transparent' ou 'white'." });
   }
 
-  console.log(`[REMOVE-BG] Usando BAT: ${batToExecute}`);
-  console.log(`[REMOVE-BG] Python final path: ${PY_FINAL}`);
+  // Como você só roda 1 por vez (running=true), dá pra limpar outputs do modo antes de processar
+  // (evita pegar “arquivo mais recente” errado por lixo antigo)
+  try {
+    for (const f of fs.readdirSync(finalOutputFolder)) {
+      if (f.toLowerCase().endsWith(expectedOutputExtension)) {
+        fs.unlinkSync(path.join(finalOutputFolder, f));
+      }
+    }
+  } catch {
+    // se falhar aqui, não é fatal
+  }
 
-  // Os argumentos para o .bat agora incluem o caminho do Python
-  // NÃO adicione aspas aqui, o spawn e o cmd.exe lidarão com os espaços
-  const args = [
-    '/c',
-    batToExecute, // <-- REMOVA AS ASPAS AQUI
-    PY_FINAL      // <-- REMOVA AS ASPAS AQUI
-  ];
+  sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Executando BAT: ${path.basename(batToExecute)}` });
+  sendWsMessage(taskId, "progress", { progress: 20 });
 
-  const proc = spawn('cmd.exe', args, {
-    cwd: ROOT, // O diretório de trabalho do .bat é a raiz do projeto
-    windowsHide: true,
-    stdio: ["ignore", "pipe", "pipe"],
+  // Quoting mais seguro no Windows (paths com espaços)
+  // /d desabilita AutoRun, /s melhora parsing, e ""..."" é o padrão pra chamar .bat com args
+  
+  
+  const proc = spawn(batToExecute, {
+  cwd: ROOT,
+  windowsHide: true,
+  shell: true,
+  stdio: ["ignore", "pipe", "pipe"],
+});
+
+  let responseSent = false;
+
+  proc.stdout.on("data", (d) => {
+    const logLine = d.toString().trim();
+    if (logLine) {
+      console.log(`[REMBG-BAT-OUT] ${modo}:`, logLine);
+      sendWsMessage(taskId, "log", { logLine: `[REMBG-BAT-OUT] ${modo}: ${logLine}` });
+    }
+    // Seu BAT não tem %, então progresso real não existe aqui.
+    // Se quiser progresso real: precisa o Python imprimir "PROGRESS: xx".
   });
 
-  let responseSent = false; // Flag para garantir que a resposta seja enviada apenas uma vez
+  proc.stderr.on("data", (d) => {
+    const logLine = d.toString().trim();
+    if (logLine) {
+      console.log(`[REMBG-BAT-ERR] ${modo}:`, logLine);
+      sendWsMessage(taskId, "log", { logLine: `[REMBG-BAT-ERR] ${modo}: ${logLine}` });
+    }
+  });
 
-  proc.stdout.on("data", d => console.log(`[REMBG-BAT-OUT] ${modo}:`, d.toString().trim()));
-  proc.stderr.on("data", d => console.log(`[REMBG-BAT-ERR] ${modo}:`, d.toString().trim()));
+  proc.on("error", (err) => {
+    running = false;
+    if (responseSent) return;
+    responseSent = true;
+    console.error("[REMOVE-BG] Erro ao iniciar BAT:", err);
+    sendWsMessage(taskId, "error", { message: "Erro ao iniciar o processo de remoção de fundo." });
+    return res.status(500).json({ error: "Erro ao iniciar o processo de remoção de fundo." });
+  });
 
   proc.on("close", (code) => {
     running = false;
     if (responseSent) return;
     responseSent = true;
-    console.log(`[REMOVE-BG] BAT ${modo} finalizado com code ${code}`);
+
+    sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] BAT finalizado com code ${code}` });
 
     if (code !== 0) {
-      return res.status(500).json({ error: `O script .bat para remoção de fundo (${modo}) falhou (code ${code})` });
+      sendWsMessage(taskId, "error", { message: `BAT falhou (code ${code})` });
+      return res.status(500).json({ error: `BAT falhou (code ${code})` });
     }
 
-    const outputFile = baseName + expectedOutputExtension;
-    const outputPath = path.join(finalOutputFolder, outputFile);
+    sendWsMessage(taskId, "progress", { progress: 90 });
 
-    if (!fs.existsSync(outputPath)) {
-      console.error(`[REMOVE-BG] Output ${modo} não encontrado: ${outputPath}`);
-      return res.status(500).json({ error: `Processamento concluído mas output ${modo} não foi gerado.` });
+    // Estratégia determinística: tenta achar pelo nome esperado primeiro,
+    // senão pega o único arquivo gerado (já que limpamos a pasta antes).
+    const expected1 = path.join(finalOutputFolder, baseName + expectedOutputExtension);
+
+    let outputPath = null;
+    if (fs.existsSync(expected1)) {
+      outputPath = expected1;
+    } else {
+      const candidates = fs.readdirSync(finalOutputFolder)
+        .filter((f) => f.toLowerCase().endsWith(expectedOutputExtension))
+        .map((f) => path.join(finalOutputFolder, f));
+
+      if (candidates.length === 1) {
+        outputPath = candidates[0];
+      } else if (candidates.length > 1) {
+        // fallback: pega o mais recente
+        outputPath = candidates
+          .map((p) => ({ p, t: fs.statSync(p).mtimeMs }))
+          .sort((a, b) => b.t - a.t)[0].p;
+      }
     }
+
+    if (!outputPath || !fs.existsSync(outputPath)) {
+      sendWsMessage(taskId, "error", { message: "Processamento concluiu mas nenhum output foi encontrado." });
+      return res.status(500).json({ error: "Nenhum output encontrado." });
+    }
+
+    sendWsMessage(taskId, "progress", { progress: 96 });
 
     const finalName = baseName + finalOutputSuffix;
     const finalPath = path.join(OUTPUT_DIR, finalName);
-    fs.copyFileSync(outputPath, finalPath);
 
-    console.log(`[REMOVE-BG] ${modo} concluído: ${finalName}`);
-    res.json({ success: true, fileName: finalName });
-  });
+    try {
+      fs.copyFileSync(outputPath, finalPath);
+    } catch {
+      sendWsMessage(taskId, "error", { message: "Falha ao copiar output final." });
+      return res.status(500).json({ error: "Falha ao copiar output final." });
+    }
 
-  proc.on("error", (err) => {
-    running = false;
-    if (responseSent) return; // <-- Verificação adicionada
-    responseSent = true;      // <-- Flag setada
-    console.error(`[REMOVE-BG] Erro ao chamar o BAT ${modo}:`, err);
-    res.status(500).json({ error: `Erro ao iniciar o processamento do BAT para remoção de fundo (${modo}).` });
+    // --- Lógica para mover o arquivo original da pasta input para 'tratadas' ---
+    // Conforme sua memória: "O usuário usa o script separar_tratadas.ps1 para mover imagens
+    // já processadas da pasta input para a pasta tratadas antes do Real‑ESRGAN."
+    // Se você quer que o Node.js faça isso, este é o lugar.
+    // Se o seu `separar_tratadas.ps1` já faz isso *antes* do BAT, você pode remover este bloco.
+    const REMBG_TREATED = path.join(REMBG_BASE_DIR, "tratadas"); // Defina esta pasta
+    if (!fs.existsSync(REMBG_TREATED)) fs.mkdirSync(REMBG_TREATED, { recursive: true });
+    try {
+      const originalInputPath = path.join(REMBG_INPUT, originalName);
+      if (fs.existsSync(originalInputPath)) {
+        const treatedPath = path.join(REMBG_TREATED, originalName);
+        fs.renameSync(originalInputPath, treatedPath); // Move o arquivo
+        sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Original movido para: ${treatedPath}` });
+      }
+    } catch (e) {
+      console.warn(`[REMOVE-BG] Falha ao mover arquivo original para 'tratadas': ${e.message}`);
+      sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Aviso: Falha ao mover original para 'tratadas'.` });
+    }
+    // --- Fim da lógica de mover para 'tratadas' ---
+
+    sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Output final: ${finalPath}` });
+    sendWsMessage(taskId, "progress", { progress: 100 });
+    sendWsMessage(taskId, "complete", { fileName: finalName });
+
+    return res.json({ success: true, fileName: finalName });
   });
 });
 
@@ -441,7 +628,6 @@ app.get("/api/resultado", (req, res) => {
     return res.status(400).json({ error: "Parâmetro fileName obrigatório." });
   }
 
-  // realesrgan pode mudar extensão para .png — testa as principais
   const baseName = path.parse(fileName).name;
   const extensoes = [".png", ".jpg", ".jpeg", ".webp"];
 
@@ -510,4 +696,10 @@ console.log("EXE existe?", fs.existsSync(EXE));
 console.log("REMBG_DIR:", REMBG_DIR);
 console.log("REMBG_DIR existe?", fs.existsSync(REMBG_DIR));
 
-app.listen(3001, () => console.log("API on http://localhost:3001"));
+const server = app.listen(3001, () => console.log("API on http://localhost:3001"));
+
+server.on('upgrade', (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, ws => {
+    wss.emit('connection', ws, request);
+  });
+});

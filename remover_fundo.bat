@@ -1,26 +1,11 @@
 @echo off
 cd /d "%~dp0"
 
-echo Testando Kornia...
-%1 -c "import kornia; print('kornia OK')"
+set PY=C:\Users\theed.ribeiro\Documents\Projeto-Hackathon\Real-ESRGAN-Projeto\.venv\Scripts\python.exe
 
-IF %ERRORLEVEL% NEQ 0 (
- echo ERRO: Kornia nao instalado
- exit /b 1
-)
+if not exist output_rgba mkdir output_rgba
+if not exist output_white mkdir output_white
 
-echo Rodando Inference...
+%PY% run\Inference.py --config configs\extra_dataset\Plus_Ultra.yaml --source input --dest output_rgba --type rgba
 
-%1 run\Inference.py ^
- --config configs\extra_dataset\Plus_Ultra.yaml ^
- --source Removedor-de-Fundo\input ^
- --dest Removedor-de-Fundo\output ^
- --type rgba
-
-IF %ERRORLEVEL% NEQ 0 (
- echo ERRO na inferencia
- exit /b 1
-)
-
-echo Finalizado
-exit /b 0
+%PY% converter_branco.py
