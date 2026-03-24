@@ -84,9 +84,13 @@ wss.on('connection', ws => {
 });
 
 function sendWsMessage(taskId, type, payload) {
+  console.log("[WS DEBUG]", { taskId, type, payload }); // 👈 ADICIONE AQUI
+
   const ws = clients.get(taskId);
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ taskId, type, ...payload }));
+  } else {
+    console.log("[WS ERRO] Cliente não encontrado ou conexão fechada:", taskId);
   }
 }
 
@@ -432,16 +436,10 @@ app.post("/api/remove-background", upload.single("image"), async (req, res) => {
   console.log(`[REMOVE-BG-DEBUG] REMBG_INPUT existe? ${fs.existsSync(REMBG_INPUT)}`);
   // --- FIM DA ADIÇÃO ---
 
-  // Copia para pasta input do removedor
-const destInput = path.join(REMBG_INPUT, originalName);
-try {
-  fs.copyFileSync(req.file.path, destInput);
-  fs.unlinkSync(req.file.path);
-} catch (e) {
-  running = false;
-  sendWsMessage(taskId, "error", { message: "Falha ao preparar arquivo de entrada." });
-  return res.status(500).json({ error: "Falha ao preparar arquivo de entrada." });
-}
+  const destInput = req.file.path;
+
+console.log(`[REMOVE-BG] Usando arquivo direto: ${destInput}`);
+sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Usando arquivo direto: ${destInput}` });
 
 sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Copiado para: ${destInput}` });
 sendWsMessage(taskId, "progress", { progress: 12 });
@@ -487,11 +485,14 @@ let batToExecute, finalOutputFolder, expectedOutputExtension, finalOutputSuffix;
   // Quoting mais seguro no Windows (paths com espaços)
   // /d desabilita AutoRun, /s melhora parsing, e ""..."" é o padrão pra chamar .bat com args
   
-  
-  const proc = spawn(batToExecute, {
+  const proc = spawn("cmd.exe", [
+  "/c",
+  batToExecute,
+  destInput
+], {
   cwd: ROOT,
   windowsHide: true,
-  shell: true,
+  shell: false,
   stdio: ["ignore", "pipe", "pipe"],
 });
 
@@ -582,7 +583,7 @@ let batToExecute, finalOutputFolder, expectedOutputExtension, finalOutputSuffix;
     // já processadas da pasta input para a pasta tratadas antes do Real‑ESRGAN."
     // Se você quer que o Node.js faça isso, este é o lugar.
     // Se o seu `separar_tratadas.ps1` já faz isso *antes* do BAT, você pode remover este bloco.
-    const REMBG_TREATED = path.join(REMBG_BASE_DIR, "tratadas"); // Defina esta pasta
+    /*const REMBG_TREATED = path.join(REMBG_BASE_DIR, "tratadas"); // Defina esta pasta
     if (!fs.existsSync(REMBG_TREATED)) fs.mkdirSync(REMBG_TREATED, { recursive: true });
     try {
       const originalInputPath = path.join(REMBG_INPUT, originalName);
@@ -594,7 +595,7 @@ let batToExecute, finalOutputFolder, expectedOutputExtension, finalOutputSuffix;
     } catch (e) {
       console.warn(`[REMOVE-BG] Falha ao mover arquivo original para 'tratadas': ${e.message}`);
       sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Aviso: Falha ao mover original para 'tratadas'.` });
-    }
+    }*/
     // --- Fim da lógica de mover para 'tratadas' ---
 
     sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Output final: ${finalPath}` });
