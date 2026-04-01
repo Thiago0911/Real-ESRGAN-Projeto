@@ -32,12 +32,12 @@ if %errorlevel% neq 0 (
   exit /b %errorlevel%
 )
 
-%PY% converter_branco.py
+REM %PY% converter_branco.py
 
-if %errorlevel% neq 0 (
-  echo ERRO no converter_branco.py
-  exit /b %errorlevel%
-)
+REM if %errorlevel% neq 0 (
+REM   echo ERRO no converter_branco.py
+REM   exit /b %errorlevel%
+REM )
 
 echo [BAT] Finalizado com sucesso
 exit /b 0

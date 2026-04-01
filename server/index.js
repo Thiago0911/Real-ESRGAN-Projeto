@@ -52,6 +52,54 @@ function ensureDirs() {
   });
 }
 
+function waitForFiles(dir, timeout = 2000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+
+    const interval = setInterval(() => {
+      const files = fs.readdirSync(dir);
+
+      if (files.length > 0) {
+        clearInterval(interval);
+        resolve(files);
+      }
+
+      if (Date.now() - start > timeout) {
+        clearInterval(interval);
+        reject("Timeout esperando arquivos");
+      }
+    }, 300);
+  });
+}
+
+// ✅ 👇 COLOCA O HELPER AQUI (FORA DAS ROTAS)
+function handleProcessOutput({ taskId, prefix }) {
+  return (data) => {
+    const output = data.toString();
+
+    output.split("\n").forEach((line) => {
+      const logLine = line.trim();
+      if (!logLine) return;
+
+      console.log(prefix, logLine);
+
+      sendWsMessage(taskId, "log", {
+        logLine: `${prefix} ${logLine}`,
+      });
+
+      if (logLine.startsWith("PROGRESS:")) {
+        const progress = parseInt(logLine.split(":")[1]);
+        sendWsMessage(taskId, "progress", { progress });
+      }
+
+      if (logLine.startsWith("STATUS:")) {
+        const status = logLine.split(":")[1];
+        sendWsMessage(taskId, "status", { status });
+      }
+    });
+  };
+}
+
 let running = false;
 
 function waitForFiles(dir, timeout = 2000) {
@@ -434,11 +482,11 @@ app.post("/api/remove-watermark", upload.single("image"), async (req, res) => {
     return res.status(400).json({ error: "Nenhum arquivo recebido." });
   }
 
-  const inputPath = req.file.path;
-  const outputName = path.parse(req.file.originalname).name + "_nowm.png";
+  const inputPath = file.path;
+  const outputName = path.parse(file.originalname).name + "_nowm.png";
   const outputPath = path.join(OUTPUT_DIR, outputName);
 
-  sendWsMessage(taskId, 'log', { logLine: `[REMOVE-WM] Iniciando remoção de marca d'água para ${req.file.originalname}` });
+  sendWsMessage(taskId, 'log', { logLine: `[REMOVE-WM] Iniciando remoção de marca d'água para ${file.originalname}` });
   sendWsMessage(taskId, 'progress', { progress: 5 });
 
   try {
@@ -468,12 +516,12 @@ app.post("/api/remove-watermark", upload.single("image"), async (req, res) => {
 });
 
 // ─── Remove Background: via BAT ───────────────────────────────────────────────
-app.post("/api/remove-background", upload.single("image"), async (req, res) => {
+app.post("/api/remove-background", upload.array("images",50), async (req, res) => {
   const taskId = req.headers["x-task-id"];
   const modo = req.headers["x-bg-mode"] || "transparent";
 
   if (!taskId) return res.status(400).json({ error: "taskId é obrigatório (via cabeçalho X-Task-Id)." });
-  if (!req.file) {
+  if (!req.files || req.files.length === 0) {
     sendWsMessage(taskId, "error", { message: "Nenhum arquivo recebido." });
     return res.status(400).json({ error: "Nenhum arquivo recebido." });
   }
@@ -486,26 +534,32 @@ app.post("/api/remove-background", upload.single("image"), async (req, res) => {
   running = true;
 
   // Segurança/robustez: evita path estranho vindo do originalname
-  const originalName = path.basename(req.file.originalname);
+  const file = req.files[0];
+  const originalName = path.basename(file.originalname);
   const baseName = path.parse(originalName).name;
 
   sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Arquivo: ${originalName} | Modo: ${modo}` });
-  sendWsMessage(taskId, "progress", { progress: 5 });
+  
 
   // --- ADIÇÃO: Logar caminhos antes da cópia ---
-  console.log(`[REMOVE-BG-DEBUG] req.file.path (temp): ${req.file.path}`);
+  console.log(`[REMOVE-BG-DEBUG] file.path (temp): ${file.path}`);
   console.log(`[REMOVE-BG-DEBUG] REMBG_INPUT (destino): ${REMBG_INPUT}`);
   console.log(`[REMOVE-BG-DEBUG] destInput (arquivo final): ${path.join(REMBG_INPUT, originalName)}`);
   console.log(`[REMOVE-BG-DEBUG] REMBG_INPUT existe? ${fs.existsSync(REMBG_INPUT)}`);
   // --- FIM DA ADIÇÃO ---
 
-  const destInput = req.file.path;
+  const destInput = path.join(INPUT_DIR, originalName);
+  if (file.path !== destInput) {
+    fs.copyFileSync(file.path, destInput);
+  } else {
+    console.log("[REMOVE-BG] Arquivo já está no destino, não copiando.");
+  }
 
   console.log(`[REMOVE-BG] Usando arquivo direto: ${destInput}`);
   sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Usando arquivo direto: ${destInput}` });
 
   sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Copiado para: ${destInput}` });
-  sendWsMessage(taskId, "progress", { progress: 12 });
+  
 
   // --- ADIÇÃO: Pequeno atraso para garantir que o arquivo seja visível ---
   await new Promise(resolve => setTimeout(resolve, 500)); // Espera 500ms
@@ -543,13 +597,15 @@ app.post("/api/remove-background", upload.single("image"), async (req, res) => {
   }
 
   sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Executando BAT: ${path.basename(batToExecute)}` });
-  sendWsMessage(taskId, "progress", { progress: 20 });
+  
 
   // Quoting mais seguro no Windows (paths com espaços)
   // /d desabilita AutoRun, /s melhora parsing, e ""..."" é o padrão pra chamar .bat com args
 
   const filesBefore = fs.readdirSync(INPUT_DIR);
   console.log("[DEBUG INPUT FILES]:", filesBefore);
+
+  const startTime = Date.now()
 
   const proc = spawn("cmd.exe", [
     "/c",
@@ -564,15 +620,15 @@ app.post("/api/remove-background", upload.single("image"), async (req, res) => {
 
   let responseSent = false;
 
-  proc.stdout.on("data", (d) => {
-    const logLine = d.toString().trim();
-    if (logLine) {
-      console.log(`[REMBG-BAT-OUT] ${modo}:`, logLine);
-      sendWsMessage(taskId, "log", { logLine: `[REMBG-BAT-OUT] ${modo}: ${logLine}` });
-    }
-    // Seu BAT não tem %, então progresso real não existe aqui.
-    // Se quiser progresso real: precisa o Python imprimir "PROGRESS: xx".
-  });
+    proc.stdout.on("data", handleProcessOutput({
+      taskId,
+      prefix: "[REMOVE-BG]"
+    }));
+
+    proc.stderr.on("data", handleProcessOutput({
+      taskId,
+      prefix: "[REMOVE-BG-ERR]"
+    }));
 
   proc.stderr.on("data", (d) => {
     const logLine = d.toString().trim();
@@ -593,6 +649,9 @@ app.post("/api/remove-background", upload.single("image"), async (req, res) => {
 
   proc.on("close", async (code) => {
     running = false;
+
+    const duration = (Date.now() - startTime) / 1000;
+
     if (responseSent) return;
     responseSent = true;
 
@@ -671,6 +730,7 @@ app.post("/api/remove-background", upload.single("image"), async (req, res) => {
     return res.json({ success: true, fileName: finalName });
   });
 });
+
 
 // ─── Status: frontend faz polling aqui ───────────────────────────────────────
 app.get("/api/status", (req, res) => {

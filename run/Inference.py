@@ -12,7 +12,10 @@ from PIL import Image
 def emit_progress(p):
     # imprime "37%" e força flush (essencial pro Node captar em tempo real)
     p = max(0, min(100, float(p)))
-    print(f"{p:.0f}%", flush=True)
+    print(f"PROGRESS:{p:.0f}", flush=True)
+    
+def emit_status(msg):
+    print(f"STATUS:{msg}", flush=True)
 
 filepath = os.path.split(os.path.abspath(__file__))[0]
 repopath = os.path.split(filepath)[0]
