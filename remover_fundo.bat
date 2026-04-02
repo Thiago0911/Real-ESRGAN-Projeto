@@ -16,15 +16,15 @@ if not exist "%INPUT_FILE%" (
   exit /b 1
 )
 
-if not exist output_rgba mkdir output_rgba
-if not exist output_white mkdir output_white
+REM if not exist output_rgba mkdir output_rgba
+REM if not exist output_white mkdir output_white
 
 echo [BAT] Processando: %INPUT_FILE%
 
 %PY% run\Inference.py ^
   --config configs\extra_dataset\Plus_Ultra.yaml ^
   --source "%INPUT_FILE%" ^
-  --dest output_rgba ^
+  --dest output ^
   --type rgba
 
 if %errorlevel% neq 0 (
