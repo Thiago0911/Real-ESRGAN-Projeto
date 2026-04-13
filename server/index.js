@@ -522,31 +522,44 @@ app.post("/api/remove-watermark", upload.single("image"), async (req, res) => {
 });
 
 // ─── Remove Background: via BAT ───────────────────────────────────────────────
-app.post("/api/remove-background", upload.array("images",50), async (req, res) => {
+app.post("/api/remove-background", upload.array("images", 50), async (req, res) => {
   const taskId = req.headers["x-task-id"];
   const modo = req.headers["x-bg-mode"] || "transparent";
 
-  if (!taskId) return res.status(400).json({ error: "taskId é obrigatório (via cabeçalho X-Task-Id)." });
+  if (!taskId) return res.status(400).json({ error: "taskId é obrigatório." });
   if (!req.files || req.files.length === 0) {
-    sendWsMessage(taskId, "error", { message: "Nenhum arquivo recebido." });
     return res.status(400).json({ error: "Nenhum arquivo recebido." });
   }
   if (running) {
-    sendWsMessage(taskId, "error", { message: "Já existe um processamento em andamento." });
     return res.status(409).json({ error: "Já existe um processamento em andamento." });
   }
 
   ensureDirs();
   running = true;
-  
+
+  const results = [];
+
+  const finalOutputFolder =
+    modo === "transparent" ? REMBG_OUTPUT : REMBG_WHITE;
+
+  const expectedExt =
+    modo === "transparent" ? ".png" : ".jpg";
+
+  const batToExecute =
+    modo === "transparent" ? REMBG_BAT_TRANSPARENT : REMBG_BAT_WHITE;
+
+  // ✅ LIMPA APENAS UMA VEZ
+  try {
+    for (const f of fs.readdirSync(finalOutputFolder)) {
+      if (f.toLowerCase().endsWith(expectedExt)) {
+        fs.unlinkSync(path.join(finalOutputFolder, f));
+      }
+    }
+  } catch {}
 
   for (const file of req.files) {
     const originalName = path.basename(file.originalname);
     const baseName = path.parse(originalName).name;
-
-    sendWsMessage(taskId, "log", {
-      logLine: `[REMOVE-BG] Processando: ${originalName}`
-    });
 
     const destInput = path.join(INPUT_DIR, originalName);
 
@@ -554,10 +567,14 @@ app.post("/api/remove-background", upload.array("images",50), async (req, res) =
       fs.copyFileSync(file.path, destInput);
     }
 
+    sendWsMessage(taskId, "log", {
+      logLine: `[REMOVE-BG] Processando: ${originalName}`
+    });
+
     await new Promise((resolve, reject) => {
       const proc = spawn("cmd.exe", [
         "/c",
-        modo === "transparent" ? REMBG_BAT_TRANSPARENT : REMBG_BAT_WHITE,
+        batToExecute,
         destInput
       ], {
         cwd: ROOT,
@@ -583,208 +600,51 @@ app.post("/api/remove-background", upload.array("images",50), async (req, res) =
       proc.on("error", reject);
     });
 
-    // pega output correto
-    const files = fs.readdirSync(REMBG_OUTPUT)
-      .filter(f => f.toLowerCase().endsWith(".png"));
-
-    if (files.length === 0) continue;
-
-    const latest = files
+    // 🔎 pega o output gerado MAIS RECENTE
+    const candidates = fs.readdirSync(finalOutputFolder)
+      .filter(f => f.toLowerCase().endsWith(expectedExt))
       .map(f => ({
-        f,
-        t: fs.statSync(path.join(REMBG_OUTPUT, f)).mtimeMs
+        name: f,
+        time: fs.statSync(path.join(finalOutputFolder, f)).mtimeMs
       }))
-      .sort((a, b) => b.t - a.t)[0].f;
+      .sort((a, b) => b.time - a.time);
 
-    const finalName = baseName + "_transparent.png";
+    if (candidates.length === 0) continue;
+
+    const match = candidates.find(f => f.name.startsWith(baseName));
+
+    if (!match) {
+      console.warn(`[REMOVE-BG] Nenhum arquivo correspondente para ${baseName}`);
+      continue;
+    }
+
+    const latest = match.name;
+    
+    const finalName = baseName + expectedExt;
     const finalPath = path.join(OUTPUT_DIR, finalName);
 
     fs.copyFileSync(
-      path.join(REMBG_OUTPUT, latest),
+      path.join(finalOutputFolder, latest),
       finalPath
     );
 
     results.push(finalName);
-  }
 
-  sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Arquivo: ${originalName} | Modo: ${modo}` });
-  
-
-  // --- ADIÇÃO: Logar caminhos antes da cópia ---
-  console.log(`[REMOVE-BG-DEBUG] file.path (temp): ${file.path}`);
-  console.log(`[REMOVE-BG-DEBUG] REMBG_INPUT (destino): ${REMBG_INPUT}`);
-  console.log(`[REMOVE-BG-DEBUG] destInput (arquivo final): ${path.join(REMBG_INPUT, originalName)}`);
-  console.log(`[REMOVE-BG-DEBUG] REMBG_INPUT existe? ${fs.existsSync(REMBG_INPUT)}`);
-  // --- FIM DA ADIÇÃO ---
-
-  const destInput = path.join(INPUT_DIR, originalName);
-  if (file.path !== destInput) {
-    fs.copyFileSync(file.path, destInput);
-  } else {
-    console.log("[REMOVE-BG] Arquivo já está no destino, não copiando.");
-  }
-
-  console.log(`[REMOVE-BG] Usando arquivo direto: ${destInput}`);
-  sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Usando arquivo direto: ${destInput}` });
-
-  sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Copiado para: ${destInput}` });
-  
-
-  // --- ADIÇÃO: Pequeno atraso para garantir que o arquivo seja visível ---
-  await new Promise(resolve => setTimeout(resolve, 500)); // Espera 500ms
-  sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Aguardando 500ms para sincronização do arquivo.` });
-  // --- FIM DA ADIÇÃO ---
-
-  let batToExecute, finalOutputFolder, expectedOutputExtension, finalOutputSuffix;
-
-  if (modo === "transparent") {
-    batToExecute = REMBG_BAT_TRANSPARENT;
-    finalOutputFolder = REMBG_OUTPUT;
-    expectedOutputExtension = ".png";
-    finalOutputSuffix = "_transparent.png";
-  } else if (modo === "white") {
-    batToExecute = REMBG_BAT_WHITE;
-    finalOutputFolder = REMBG_WHITE;
-    expectedOutputExtension = ".jpg";
-    finalOutputSuffix = "_white.jpg";
-  } else {
-    running = false;
-    sendWsMessage(taskId, "error", { message: "Modo inválido. Use 'transparent' ou 'white'." });
-    return res.status(400).json({ error: "Modo inválido. Use 'transparent' ou 'white'." });
-  }
-
-  // Como você só roda 1 por vez (running=true), dá pra limpar outputs do modo antes de processar
-  // (evita pegar “arquivo mais recente” errado por lixo antigo)
-  try {
-    for (const f of fs.readdirSync(finalOutputFolder)) {
-      if (f.toLowerCase().endsWith(expectedOutputExtension)) {
-        fs.unlinkSync(path.join(finalOutputFolder, f));
-      }
-    }
-  } catch {
-    // se falhar aqui, não é fatal
-  }
-
-  sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Executando BAT: ${path.basename(batToExecute)}` });
-  
-
-  // Quoting mais seguro no Windows (paths com espaços)
-  // /d desabilita AutoRun, /s melhora parsing, e ""..."" é o padrão pra chamar .bat com args
-
-  const filesBefore = fs.readdirSync(INPUT_DIR);
-  console.log("[DEBUG INPUT FILES]:", filesBefore);
-
-  const startTime = Date.now()
-
-  const proc = spawn("cmd.exe", [
-    "/c",
-    batToExecute,
-    destInput
-  ], {
-    cwd: ROOT,
-    windowsHide: true,
-    shell: false,
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-
-  let responseSent = false;
-
-    proc.stdout.on("data", handleProcessOutput({
-      taskId,
-      prefix: "[REMOVE-BG]"
-    }));
-
-    proc.stderr.on("data", handleProcessOutput({
-      taskId,
-      prefix: "[REMOVE-BG-ERR]"
-    }));
-
-  proc.stderr.on("data", (d) => {
-    const logLine = d.toString().trim();
-    if (logLine) {
-      console.log(`[REMBG-BAT-ERR] ${modo}:`, logLine);
-      sendWsMessage(taskId, "log", { logLine: `[REMBG-BAT-ERR] ${modo}: ${logLine}` });
-    }
-  });
-
-  proc.on("error", (err) => {
-    running = false;
-    if (responseSent) return;
-    responseSent = true;
-    console.error("[REMOVE-BG] Erro ao iniciar BAT:", err);
-    sendWsMessage(taskId, "error", { message: "Erro ao iniciar o processo de remoção de fundo." });
-    return res.status(500).json({ error: "Erro ao iniciar o processo de remoção de fundo." });
-  });
-
-  proc.on("close", async (code) => {
-    running = false;
-
-    const duration = (Date.now() - startTime) / 1000;
-
-    if (responseSent) return;
-    responseSent = true;
-
-    sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] BAT finalizado com code ${code}` });
-
-    if (code !== 0) {
-      sendWsMessage(taskId, "error", { message: `BAT falhou (code ${code})` });
-      return res.status(500).json({ error: `BAT falhou (code ${code})` });
-    }
-
-    sendWsMessage(taskId, "progress", { progress: 90 });
-
-    // Estratégia determinística: tenta achar pelo nome esperado primeiro,
-    // senão pega o único arquivo gerado (já que limpamos a pasta antes).
-    const expected1 = path.join(finalOutputFolder, baseName + expectedOutputExtension);
-
-    let outputPath = null;
-    if (fs.existsSync(expected1)) {
-      outputPath = expected1;
-    } else {
-      const candidates = fs.readdirSync(finalOutputFolder)
-        .filter((f) => f.toLowerCase().endsWith(expectedOutputExtension))
-        .map((f) => path.join(finalOutputFolder, f));
-
-      if (candidates.length === 1) {
-        outputPath = candidates[0];
-      } else if (candidates.length > 1) {
-        // fallback: pega o mais recente
-        outputPath = candidates
-          .map((p) => ({ p, t: fs.statSync(p).mtimeMs }))
-          .sort((a, b) => b.t - a.t)[0].p;
-      }
-    }
-
-    if (!outputPath || !fs.existsSync(outputPath)) {
-      sendWsMessage(taskId, "error", { message: "Processamento concluiu mas nenhum output foi encontrado." });
-      return res.status(500).json({ error: "Nenhum output encontrado." });
-    }
-
-    sendWsMessage(taskId, "progress", { progress: 96 });
-
-    const finalName = baseName + finalOutputSuffix;
-    const finalPath = path.join(OUTPUT_DIR, finalName);
-
-    try {
-      fs.copyFileSync(outputPath, finalPath);
-    } catch {
-      sendWsMessage(taskId, "error", { message: "Falha ao copiar output final." });
-      return res.status(500).json({ error: "Falha ao copiar output final." });
-    }
-
-    sendWsMessage(taskId, "log", { logLine: `[REMOVE-BG] Output final: ${finalPath}` });
-    sendWsMessage(taskId, "progress", { progress: 99 });
-
-    // 👇 AQUI ESTÁ O PONTO QUE FALTAVA
-    const resultUrl = `http://localhost:3001/api/resultado?fileName=${finalName}`;
-
-    sendWsMessage(taskId, "complete", {
-      files: [finalName]
+    sendWsMessage(taskId, "log", {
+      logLine: `[REMOVE-BG] Gerado: ${finalName}`
     });
+  }
 
-    // opcional manter response
-    return res.json({ success: true, resultUrl });
-      });
+  running = false;
+
+  sendWsMessage(taskId, "complete", {
+    files: results
+  });
+
+  return res.json({
+    success: true,
+    files: results
+  });
 });
 
 
