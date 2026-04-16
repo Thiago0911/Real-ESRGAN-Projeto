@@ -39,6 +39,8 @@ const EXE = path.join(ENGINE_DIR, "realesrgan-ncnn-vulkan.exe");
 
 const INPUT_DIR = path.join(ROOT, "Input");
 const OUTPUT_DIR = path.join(ROOT, "output");
+const ENHANCE_OUTPUT_DIR = path.join(ROOT, "output_enhance");
+const REMBG_FINAL_OUTPUT_DIR = path.join(ROOT, "output_rembg");
 const LOG_DIR = path.join(ROOT, "logs");
 const LOG_FILE = path.join(LOG_DIR, "log.txt");
 
@@ -47,7 +49,7 @@ console.log("PY_LOCAL existe?", fs.existsSync(PY_LOCAL));
 console.log("INFERENCE:", INFERENCE);
 
 function ensureDirs() {
-  [LOG_DIR, OUTPUT_DIR, INPUT_DIR, REMBG_INPUT, REMBG_OUTPUT, REMBG_RGBA, REMBG_WHITE].forEach((dir) => {
+  [LOG_DIR, OUTPUT_DIR, INPUT_DIR, REMBG_INPUT, REMBG_OUTPUT, REMBG_RGBA, REMBG_WHITE, ENHANCE_OUTPUT_DIR, REMBG_FINAL_OUTPUT_DIR].forEach((dir) => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   });
 }
@@ -357,14 +359,18 @@ app.post("/api/enhance",(req, res, next) => {
   console.log(`[ENHANCE] Limpando input para novo lote`);
   sendWsMessage(taskId, 'log', { logLine: `[ENHANCE] Limpando input para novo lote` });
 
+  // 🔥 PRESERVAR ORDEM DOS ARQUIVOS ORIGINAIS
+  const fileOrder = files.map(f => path.parse(f.originalname).name);
+  console.log("[ENHANCE] Ordem dos arquivos de entrada:", fileOrder);
+
   // 🔥 limpa outputs antigos (IMPORTANTE em lote)
   
   const prefixes = req.files.map(f => path.parse(f.originalname).name);
 
-  fs.readdirSync(OUTPUT_DIR).forEach(file => {
+  fs.readdirSync(ENHANCE_OUTPUT_DIR).forEach(file => {
     const shouldDelete = prefixes.some(prefix => file.startsWith(prefix));
     if (shouldDelete) {
-      fs.unlinkSync(path.join(OUTPUT_DIR, file));
+      fs.unlinkSync(path.join(ENHANCE_OUTPUT_DIR, file));
     }
   });
 
@@ -373,7 +379,7 @@ app.post("/api/enhance",(req, res, next) => {
 
   const args = [
     "-i", INPUT_DIR,
-    "-o", OUTPUT_DIR,
+    "-o", ENHANCE_OUTPUT_DIR,
     "-s", "4",
     "-t", "256",
     "-n", "realesrgan-x4plus",
@@ -427,7 +433,7 @@ app.post("/api/enhance",(req, res, next) => {
     // ✅ NOVA LÓGICA PARA LOTE
     let outputs;
     try {
-      outputs = await waitForFiles(OUTPUT_DIR, 15000);
+      outputs = await waitForFiles(ENHANCE_OUTPUT_DIR, 15000);
     } catch (err) {
       console.error("[ENHANCE] Timeout esperando outputs");
       sendWsMessage(taskId, 'error', {
@@ -458,12 +464,28 @@ app.post("/api/enhance",(req, res, next) => {
       logLine: `[ENHANCE] ${outputs.length} arquivo(s) gerado(s)`
     });
 
+    // 🔥 ORDENAR OUTPUTS CONFORME A ORDEM DOS INPUTS
+    const sortedOutputs = outputs.sort((a, b) => {
+      const aPrefix = path.parse(a).name.replace(/_\d+x$/, ''); // Remove sufixo como "_4x"
+      const bPrefix = path.parse(b).name.replace(/_\d+x$/, '');
+      
+      const aIndex = fileOrder.indexOf(aPrefix);
+      const bIndex = fileOrder.indexOf(bPrefix);
+      
+      return aIndex - bIndex;
+    });
+
+    console.log(`[ENHANCE] Outputs ordenados:`, sortedOutputs);
+    sendWsMessage(taskId, 'log', {
+      logLine: `[ENHANCE] Ordem preservada dos outputs`
+    });
+
     // ✅ ENVIA TODOS OS ARQUIVOS
-    sendWsMessage(taskId, 'complete', { files: outputs });
+    sendWsMessage(taskId, 'complete', { files: sortedOutputs });
 
     return res.json({
       success: true,
-      files: outputs
+      files: sortedOutputs
     });
   });
 
@@ -621,7 +643,7 @@ app.post("/api/remove-background", upload.array("images", 50), async (req, res) 
     const latest = match.name;
     
     const finalName = baseName + expectedExt;
-    const finalPath = path.join(OUTPUT_DIR, finalName);
+    const finalPath = path.join(REMBG_FINAL_OUTPUT_DIR, finalName);
 
     fs.copyFileSync(
       path.join(finalOutputFolder, latest),
@@ -671,19 +693,24 @@ app.get("/api/resultado", (req, res) => {
     return res.status(400).json({ error: "Parâmetro fileName obrigatório." });
   }
 
-  const filePath = path.join(OUTPUT_DIR, fileName);
+  // 🔥 Procura em ambas as pastas (enhance e remove-bg)
+  const possiblePaths = [
+    path.join(ENHANCE_OUTPUT_DIR, fileName),
+    path.join(REMBG_FINAL_OUTPUT_DIR, fileName)
+  ];
 
-  if (!fs.existsSync(filePath)) {
-    console.error("[RESULTADO] Não encontrado:", filePath);
-    return res.status(404).json({
-      error: `Arquivo não encontrado: ${fileName}`,
-    });
+  let filePath = null;
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      filePath = p;
+      break;
+    }
   }
 
   if (!filePath) {
-    console.error(`[RESULTADO] Não encontrado em /output: ${fileName}`);
+    console.error("[RESULTADO] Não encontrado em nenhuma pasta:", fileName);
     return res.status(404).json({
-      error: `Arquivo processado não encontrado para: ${fileName}`,
+      error: `Arquivo não encontrado: ${fileName}`,
     });
   }
 
@@ -699,17 +726,26 @@ console.log("EXE existe?", fs.existsSync(EXE));
 
 app.get("/api/abrir-output", (req, res) => {
   const { spawn } = require("child_process");
+  const mode = req.query.mode;
 
   const filesBefore = fs.readdirSync(INPUT_DIR);
   console.log("[DEBUG INPUT FILES]:", filesBefore);
+  console.log("[ABRIR-OUTPUT] mode:", mode);
 
-  const child = spawn("explorer.exe", [OUTPUT_DIR], {
+  let folderToOpen = OUTPUT_DIR;
+  if (mode === "enhance") {
+    folderToOpen = ENHANCE_OUTPUT_DIR;
+  } else if (mode === "remove-bg") {
+    folderToOpen = REMBG_FINAL_OUTPUT_DIR;
+  }
+
+  const child = spawn("explorer.exe", [folderToOpen], {
     detached: true,
     stdio: "ignore",
   });
 
   child.unref();
-  res.json({ success: true });
+  res.json({ success: true, folder: folderToOpen });
 });
 
 const METRICS_FILE = path.join(ROOT, "logs", "metrics.json");
