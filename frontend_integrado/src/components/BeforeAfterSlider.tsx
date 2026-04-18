@@ -1,19 +1,12 @@
-import { useState, useRef, useCallback } from "react";
-import { GripVertical } from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 interface BeforeAfterSliderProps {
   beforeImage: string;
   afterImage: string;
   beforeLabel?: string;
   afterLabel?: string;
-
-  // enhancement sem corte
   fit?: "cover" | "contain";
-
-  // remove-bg: produto fixo por cima
   foregroundImage?: string;
-
-  // mantém o formato que você quiser
   aspectClassName?: string;
 }
 
@@ -33,32 +26,24 @@ const BeforeAfterSlider = ({
   const updatePosition = useCallback((clientX: number) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-    setSliderPosition((x / rect.width) * 100);
+    const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    setSliderPosition(pct);
   }, []);
 
-  const handleMouseDown = useCallback(() => {
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
     isDragging.current = true;
-  }, []);
+    containerRef.current?.setPointerCapture(e.pointerId);
+    updatePosition(e.clientX);
+  }, [updatePosition]);
 
-  const handleMouseUp = useCallback(() => {
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    updatePosition(e.clientX);
+  }, [updatePosition]);
+
+  const handlePointerUp = useCallback(() => {
     isDragging.current = false;
   }, []);
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!isDragging.current) return;
-      updatePosition(e.clientX);
-    },
-    [updatePosition]
-  );
-
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent) => {
-      updatePosition(e.touches[0].clientX);
-    },
-    [updatePosition]
-  );
 
   const fitClass = fit === "contain" ? "object-contain" : "object-cover";
 
@@ -66,13 +51,12 @@ const BeforeAfterSlider = ({
     <div
       ref={containerRef}
       className={`relative w-full ${aspectClassName} overflow-hidden rounded-2xl border border-border cursor-col-resize select-none bg-muted/30`}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleMouseUp}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
     >
-      {/* After image (full) */}
+      {/* After image — full, sem clip */}
       <img
         src={afterImage}
         alt={afterLabel}
@@ -80,46 +64,55 @@ const BeforeAfterSlider = ({
         draggable={false}
       />
 
-      {/* Before image (clipped) */}
-      <div className="absolute inset-0 overflow-hidden" style={{ width: `${sliderPosition}%` }}>
-        <img
-          src={beforeImage}
-          alt={beforeLabel}
-          className={`absolute inset-0 w-full h-full ${fitClass} object-center`}
-          draggable={false}
-        />
-      </div>
+      {/* Before image — clip-path em vez de redimensionar o wrapper */}
+      <img
+        src={beforeImage}
+        alt={beforeLabel}
+        className={`absolute inset-0 w-full h-full ${fitClass} object-center`}
+        style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
+        draggable={false}
+      />
 
       {/* Foreground fixo (produto recortado) */}
-      {foregroundImage ? (
+      {foregroundImage && (
         <img
           src={foregroundImage}
           alt="Produto"
           className="absolute inset-0 z-20 w-full h-full object-contain object-center pointer-events-none"
           draggable={false}
         />
-      ) : null}
+      )}
 
-      {/* Slider line */}
+      {/* Linha do slider */}
       <div
-        className="absolute top-0 bottom-0 w-0.5 bg-foreground/80 z-30"
+        className="absolute top-0 bottom-0 w-px bg-white/90 z-30 pointer-events-none"
         style={{ left: `${sliderPosition}%` }}
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleMouseDown}
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-foreground/90 flex items-center justify-center shadow-lg backdrop-blur-sm">
-          <GripVertical className="h-5 w-5 text-background" />
+        {/* Handle */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-md">
+          <svg
+            viewBox="0 0 24 24"
+            className="h-[18px] w-[18px] text-neutral-700"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+          >
+            <line x1="8" y1="12" x2="16" y2="12" />
+            <polyline points="5,9 2,12 5,15" />
+            <polyline points="19,9 22,12 19,15" />
+          </svg>
         </div>
       </div>
 
       {/* Labels */}
-      <div className="absolute bottom-4 left-4 z-40">
-        <span className="rounded-full bg-destructive/80 px-3 py-1 text-xs font-semibold text-destructive-foreground">
+      <div className="absolute bottom-4 left-4 z-40 pointer-events-none">
+        <span className="rounded-full bg-red-600/80 px-3 py-1 text-xs font-semibold text-white tracking-wide">
           {beforeLabel}
         </span>
       </div>
-      <div className="absolute bottom-4 right-4 z-40">
-        <span className="rounded-full bg-primary/80 px-3 py-1 text-xs font-semibold text-primary-foreground">
+      <div className="absolute bottom-4 right-4 z-40 pointer-events-none">
+        <span className="rounded-full bg-blue-600/80 px-3 py-1 text-xs font-semibold text-white tracking-wide">
           {afterLabel}
         </span>
       </div>
