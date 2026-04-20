@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 
 interface BeforeAfterSliderProps {
   beforeImage: string;
@@ -17,7 +17,7 @@ const BeforeAfterSlider = ({
   afterLabel = "DEPOIS",
   fit = "cover",
   foregroundImage,
-  aspectClassName = "aspect-square",
+  aspectClassName = "aspect-[4/3]",
 }: BeforeAfterSliderProps) => {
   const [sliderPosition, setSliderPosition] = useState(50);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,7 +50,12 @@ const BeforeAfterSlider = ({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full ${aspectClassName} overflow-hidden rounded-2xl border border-border cursor-col-resize select-none bg-muted/30`}
+      className={`
+        relative w-full overflow-hidden rounded-2xl border border-border
+        cursor-col-resize select-none bg-muted/30
+        ${aspectClassName}
+        max-h-[60vh] sm:max-h-[70vh] lg:max-h-[80vh]
+      `}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -64,7 +69,7 @@ const BeforeAfterSlider = ({
         draggable={false}
       />
 
-      {/* Before image — clip-path em vez de redimensionar o wrapper */}
+      {/* Before image — clip-path */}
       <img
         src={beforeImage}
         alt={beforeLabel}
@@ -73,7 +78,7 @@ const BeforeAfterSlider = ({
         draggable={false}
       />
 
-      {/* Foreground fixo (produto recortado) */}
+      {/* Foreground fixo */}
       {foregroundImage && (
         <img
           src={foregroundImage}
@@ -88,7 +93,6 @@ const BeforeAfterSlider = ({
         className="absolute top-0 bottom-0 w-px bg-white/90 z-30 pointer-events-none"
         style={{ left: `${sliderPosition}%` }}
       >
-        {/* Handle */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-md">
           <svg
             viewBox="0 0 24 24"

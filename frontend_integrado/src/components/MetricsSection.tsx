@@ -1,5 +1,4 @@
-import { motion } from "framer-motion";
-import { Users, Cpu, TrendingUp, Clock, Image } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 const teamMembers = [
   { name: "Thiago", manual: 20 },
@@ -19,218 +18,202 @@ const pixelForgeDaily = MACHINES * IMAGES_PER_MACHINE;
 const pixelForgeHourly = Math.round(pixelForgeDaily / BATCH_HOURS);
 const multiplier = (pixelForgeDaily / manualDaily).toFixed(1);
 
+const hours = ["7h","8h","9h","10h","11h","12h","13h","14h","15h","16h","17h","18h","19h","20h"];
+const forgeData  = hours.map((_, i) => Math.min(Math.round((pixelForgeDaily / (hours.length - 1)) * i), pixelForgeDaily));
+const manualData = hours.map((_, i) => Math.min(Math.round((manualDaily / (WORK_HOURS)) * (i * (BATCH_HOURS / (hours.length - 1)))), manualDaily));
+
 const metrics = [
-  { icon: Image,  label: "Imgs / hora",  before: manualHourly,  after: pixelForgeHourly },
-  { icon: Clock,  label: "Imgs / dia",   before: manualDaily,   after: pixelForgeDaily  },
-  { icon: Users,  label: "Pessoas",      before: 4,             after: 0,  afterLabel: "Auto" },
-  { icon: Cpu,    label: "Máquinas",     before: 0,             after: MACHINES, beforeLabel: "—" },
+  { label: "Imgs / hora",  value: pixelForgeHourly.toLocaleString("pt-BR"), sub: `Antes: ${manualHourly}/h`,      badge: `↑ +${Math.round((pixelForgeHourly/manualHourly - 1)*100)}%`, type: "up" },
+  { label: "Imgs / dia",   value: pixelForgeDaily.toLocaleString("pt-BR"),  sub: `Antes: ${manualDaily}/dia`,     badge: `↑ +${Math.round((pixelForgeDaily/manualDaily - 1)*100)}%`,  type: "up" },
+  { label: "Pessoas",      value: "0",                                       sub: `Antes: ${teamMembers.length} pessoas`, badge: "Automatizado", type: "auto" },
+  { label: "Máquinas",     value: String(MACHINES),                          sub: `${IMAGES_PER_MACHINE} imgs cada`, badge: "Overnight",    type: "up" },
 ];
-
-// barras agrupadas: cada entrada tem manual + pixelforge
-const barData = [
-  ...teamMembers.map((m) => ({
-    label: m.name,
-    manual: m.manual * WORK_HOURS,
-    forge: 0,
-  })),
-  ...Array.from({ length: MACHINES }, (_, i) => ({
-    label: `Máq. ${i + 1}`,
-    manual: 0,
-    forge: IMAGES_PER_MACHINE,
-  })),
-];
-
-const BAR_MAX = IMAGES_PER_MACHINE;
 
 const MetricsSection = () => {
+  const chartRef = useRef(null);
+  const chartInstance = useRef(null);
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+
+    const loadChart = async () => {
+      if (!window.Chart) {
+        await new Promise((resolve) => {
+          const script = document.createElement("script");
+          script.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
+          script.onload = resolve;
+          document.head.appendChild(script);
+        });
+      }
+
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
+      }
+
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
+      const tickColor = isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)";
+
+      chartInstance.current = new window.Chart(chartRef.current, {
+        type: "line",
+        data: {
+          labels: hours,
+          datasets: [
+            {
+              label: "Pixel Forge",
+              data: forgeData,
+              borderColor: "#7F77DD",
+              backgroundColor: "rgba(127,119,221,0.12)",
+              borderWidth: 2,
+              pointRadius: 3,
+              pointBackgroundColor: "#7F77DD",
+              fill: true,
+              tension: 0.35,
+            },
+            {
+              label: "Manual",
+              data: manualData,
+              borderColor: "#B4B2A9",
+              backgroundColor: "rgba(180,178,169,0.07)",
+              borderWidth: 1.5,
+              pointRadius: 3,
+              pointBackgroundColor: "#B4B2A9",
+              fill: true,
+              tension: 0.35,
+              borderDash: [5, 3],
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) =>
+                  ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString("pt-BR")} imgs`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: tickColor, font: { size: 11 }, autoSkip: false, maxRotation: 0 },
+            },
+            y: {
+              min: 0,
+              max: pixelForgeDaily + 100,
+              grid: { color: gridColor },
+              ticks: {
+                color: tickColor,
+                font: { size: 11 },
+                callback: (v) => (v >= 1000 ? (v / 1000).toFixed(1) + "k" : v),
+              },
+            },
+          },
+        },
+      });
+    };
+
+    loadChart();
+
+    return () => {
+      chartInstance.current?.destroy();
+    };
+  }, []);
+
   return (
-    <section id="impacto" className="relative h-full flex flex-col overflow-hidden">
-      <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none" />
+    <section id="impacto" className="relative flex flex-col overflow-hidden">
+      <div className="relative flex-1 container mx-auto px-6 py-8 space-y-5">
 
-      <div className="relative flex-1 overflow-y-auto container mx-auto px-6 py-8">
-
-        {/* Título */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-6"
-        >
-          <h2 className="text-3xl font-bold sm:text-4xl">
+        {/* Cabeçalho */}
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1">
+            <br />
+          </p>
+          <h2 className="text-3xl font-bold sm:text-4xl text-foreground">
             Impacto <span className="text-gradient-forge">real no time</span>
           </h2>
-          <p className="mt-2 text-muted-foreground max-w-xl mx-auto text-sm">
-            Processo manual vs Pixel Forge em lote overnight — 4 máquinas, 13,5h de processamento.
+          <p className="mt-1 text-sm text-muted-foreground">
+            4 máquinas · processamento overnight de 13,5h · comparado ao processo manual do time
           </p>
-        </motion.div>
+        </div>
 
-        {/* Layout principal: esquerda cards | direita gráfico */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* Multiplier */}
+        <div className="rounded-2xl border border-border bg-card px-6 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1">
+              Ganho de produtividade
+            </p>
+            <p className="text-sm text-muted-foreground">
+              <span className="text-foreground font-medium">{pixelForgeDaily.toLocaleString("pt-BR")}</span>
+              {" "}vs{" "}
+              <span className="text-foreground font-medium">{manualDaily}</span>
+              {" "}imgs/dia
+            </p>
+          </div>
+          <div className="text-5xl font-bold leading-none" style={{ color: "#7F77DD" }}>
+            {multiplier}×
+          </div>
+        </div>
 
-          {/* Coluna esquerda — multiplier + cards */}
-          <div className="flex flex-col gap-4">
-
-            {/* Multiplier */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="rounded-2xl border border-primary/30 bg-primary/5 py-4 px-6 flex items-center justify-between"
+        {/* Cards 2×2 */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {metrics.map((m) => (
+            <div
+              key={m.label}
+              className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-1"
             >
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                  Ganho de produtividade
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  <span className="text-foreground font-medium">{pixelForgeDaily.toLocaleString("pt-BR")}</span>
-                  {" "}vs{" "}
-                  <span className="text-foreground font-medium">{manualDaily}</span>
-                  {" "}imgs/dia
-                </p>
-              </div>
-              <div className="text-5xl font-bold font-display text-gradient-forge leading-none">
-                {multiplier}×
-              </div>
-            </motion.div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                {m.label}
+              </p>
+              <p className="text-2xl font-semibold text-foreground leading-none">
+                {m.value}
+              </p>
+              <p className="text-xs text-muted-foreground">{m.sub}</p>
+              <span
+                className="mt-1 self-start text-[11px] font-medium px-2 py-0.5 rounded-full"
+                style={
+                  m.type === "auto"
+                    ? { background: "#EEEDFE", color: "#3C3489" }
+                    : { background: "#E1F5EE", color: "#0F6E56" }
+                }
+              >
+                {m.badge}
+              </span>
+            </div>
+          ))}
+        </div>
 
-            {/* Metric cards 2×2 */}
-            <div className="grid grid-cols-2 gap-3">
-              {metrics.map((m, i) => (
-                <motion.div
-                  key={m.label}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.45, delay: i * 0.08 }}
-                  className="rounded-2xl border border-border bg-card p-4"
-                >
-                  <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <m.icon className="h-4 w-4" />
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide font-medium">
-                    {m.label}
-                  </p>
-                  <div className="flex items-center justify-between gap-1">
-                    <div className="text-center">
-                      <div className="text-[10px] text-muted-foreground mb-0.5">Antes</div>
-                      <div className="text-base font-bold text-muted-foreground">
-                        {m.beforeLabel ?? m.before}
-                      </div>
-                    </div>
-                    <TrendingUp className="h-3.5 w-3.5 text-primary shrink-0" />
-                    <div className="text-center">
-                      <div className="text-[10px] text-muted-foreground mb-0.5">Depois</div>
-                      <div className="text-base font-bold text-gradient-forge">
-                        {m.afterLabel ?? m.after}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+        {/* Gráfico de área */}
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Produção acumulada ao longo do dia
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Imagens geradas por hora — manual vs Pixel Forge
+              </p>
+            </div>
+            <div className="flex gap-4 text-xs text-muted-foreground items-center">
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#7F77DD" }} />
+                Pixel Forge
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#B4B2A9" }} />
+                Manual
+              </span>
             </div>
           </div>
 
-          {/* Coluna direita — gráfico agrupado */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="rounded-2xl border border-border bg-card p-5"
-          >
-            <h3 className="text-sm font-semibold font-display mb-0.5">
-              Produção diária por colaborador / máquina
-            </h3>
-            <p className="text-xs text-muted-foreground mb-5">
-              Barras agrupadas — manual (esmaecido) vs Pixel Forge (destaque)
-            </p>
-
-            <div className="space-y-3">
-              {barData.map((row, i) => (
-                <motion.div
-                  key={row.label}
-                  initial={{ opacity: 0, x: -16 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.45, delay: i * 0.06 }}
-                  className="flex items-center gap-3"
-                >
-                  <span className="w-16 text-xs text-muted-foreground text-right shrink-0">
-                    {row.label}
-                  </span>
-
-                  <div className="flex-1 flex flex-col gap-1">
-                    {/* Barra manual */}
-                    {row.manual > 0 ? (
-                      <div className="h-3 rounded-full bg-muted/40 overflow-hidden relative">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          whileInView={{ width: `${(row.manual / BAR_MAX) * 100}%` }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 0.65, delay: 0.15 + i * 0.06 }}
-                          className="h-full rounded-full bg-muted-foreground/30"
-                        />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
-                          {row.manual}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="h-3 rounded-full bg-muted/20 flex items-center px-2">
-                        <span className="text-[10px] text-muted-foreground/40">—</span>
-                      </div>
-                    )}
-
-                    {/* Barra Pixel Forge */}
-                    {row.forge > 0 ? (
-                      <div className="h-3 rounded-full bg-muted/40 overflow-hidden relative">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          whileInView={{ width: `${(row.forge / BAR_MAX) * 100}%` }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 0.65, delay: 0.2 + i * 0.06 }}
-                          className="h-full rounded-full bg-primary/70"
-                        />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-primary font-medium">
-                          {row.forge}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="h-3 rounded-full bg-muted/20 flex items-center px-2">
-                        <span className="text-[10px] text-muted-foreground/40">—</span>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Totais */}
-            <div className="mt-5 pt-4 border-t border-border flex items-center justify-between text-xs">
-              <span className="text-muted-foreground font-medium">
-                Manual total:{" "}
-                <span className="text-foreground font-semibold">{manualDaily} imgs</span>
-              </span>
-              <span className="text-primary font-medium">
-                Pixel Forge total:{" "}
-                <span className="font-semibold">{pixelForgeDaily.toLocaleString("pt-BR")} imgs</span>
-              </span>
-            </div>
-
-            {/* Legenda */}
-            <div className="mt-3 flex items-center gap-5 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-2.5 w-2.5 rounded-full bg-muted-foreground/30" />
-                Processo manual
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-2.5 w-2.5 rounded-full bg-primary/70" />
-                Pixel Forge (overnight)
-              </span>
-            </div>
-          </motion.div>
+          <div className="relative w-full" style={{ height: 260 }}>
+            <canvas ref={chartRef} />
+          </div>
         </div>
+
       </div>
     </section>
   );
