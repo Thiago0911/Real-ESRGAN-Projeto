@@ -6,7 +6,6 @@ import autoPartAfter from "@/assets/auto-part-after.jpg";
 
 import bgRemoveBefore from "@/assets/bg-remove-before.jpg";
 import bgRemoveAfter from "@/assets/bg-remove-after.jpg";
-// import productCut from "@/assets/product-foreground.png"; // PNG transparente do objeto
 
 const demos = [
   {
@@ -17,14 +16,13 @@ const demos = [
     beforeLabel: "Antes",
     afterLabel: "Depois",
     caption: "Upscaling 4x com recuperação de nitidez",
-    fit: "contain" as const,            // ✅ sem “zoom”
+    fit: "contain" as const,
   },
   {
     icon: "✂️",
     title: "Remoção de Fundo",
-    beforeImage: bgRemoveBefore,        // ✅ fundo original
-    afterImage: bgRemoveAfter,          // ✅ cenário “depois” (branco/xadrez)
-   // foregroundImage: productCut,         // ✅ objeto fixo
+    beforeImage: bgRemoveBefore,
+    afterImage: bgRemoveAfter,
     beforeLabel: "Original",
     afterLabel: "Sem fundo",
     caption: "Recorte automático com precisão de bordas",
@@ -34,14 +32,14 @@ const demos = [
 
 const DemoSection = () => {
   return (
-    <section id="demo" className="py-24 relative">
+    <section id="demo" className="relative h-screen flex items-center overflow-hidden">
       <div className="container mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-10"
         >
           <h2 className="text-3xl font-bold sm:text-4xl lg:text-5xl">
             Veja a <span className="text-gradient-forge">diferença</span>

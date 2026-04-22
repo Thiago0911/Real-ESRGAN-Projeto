@@ -18,15 +18,40 @@ const pixelForgeDaily = MACHINES * IMAGES_PER_MACHINE;
 const pixelForgeHourly = Math.round(pixelForgeDaily / BATCH_HOURS);
 const multiplier = (pixelForgeDaily / manualDaily).toFixed(1);
 
-const hours = ["7h","8h","9h","10h","11h","12h","13h","14h","15h","16h","17h","18h","19h","20h"];
-const forgeData  = hours.map((_, i) => Math.min(Math.round((pixelForgeDaily / (hours.length - 1)) * i), pixelForgeDaily));
-const manualData = hours.map((_, i) => Math.min(Math.round((manualDaily / (WORK_HOURS)) * (i * (BATCH_HOURS / (hours.length - 1)))), manualDaily));
+const hours = ["17h30","18h","19h","20h","21h","22h","23h","00h","01h","02h","03h","04h","05h","06h","07h"];
+const forgeData = hours.map((_, i) =>
+  Math.min(Math.round((pixelForgeDaily / (hours.length - 1)) * i), pixelForgeDaily)
+);
 
 const metrics = [
-  { label: "Imgs / hora",  value: pixelForgeHourly.toLocaleString("pt-BR"), sub: `Antes: ${manualHourly}/h`,      badge: `↑ +${Math.round((pixelForgeHourly/manualHourly - 1)*100)}%`, type: "up" },
-  { label: "Imgs / dia",   value: pixelForgeDaily.toLocaleString("pt-BR"),  sub: `Antes: ${manualDaily}/dia`,     badge: `↑ +${Math.round((pixelForgeDaily/manualDaily - 1)*100)}%`,  type: "up" },
-  { label: "Pessoas",      value: "0",                                       sub: `Antes: ${teamMembers.length} pessoas`, badge: "Automatizado", type: "auto" },
-  { label: "Máquinas",     value: String(MACHINES),                          sub: `${IMAGES_PER_MACHINE} imgs cada`, badge: "Overnight",    type: "up" },
+  {
+    label: "Imgs / hora",
+    value: pixelForgeHourly.toLocaleString("pt-BR"),
+    sub: `Antes: ${manualHourly}/h`,
+    badge: `↑ +${Math.round((pixelForgeHourly / manualHourly - 1) * 100)}%`,
+    type: "up",
+  },
+  {
+    label: "Imgs / dia",
+    value: pixelForgeDaily.toLocaleString("pt-BR"),
+    sub: `Antes: ${manualDaily}/dia`,
+    badge: `↑ +${Math.round((pixelForgeDaily / manualDaily - 1) * 100)}%`,
+    type: "up",
+  },
+  {
+    label: "Horas ganhas",
+    value: `${BATCH_HOURS}h`,
+    sub: "17h30 às 07h00",
+    badge: "Overnight",
+    type: "auto",
+  },
+  {
+    label: "Máquinas",
+    value: String(MACHINES),
+    sub: `${IMAGES_PER_MACHINE} imgs cada`,
+    badge: "Rodando 24/7",
+    type: "up",
+  },
 ];
 
 const MetricsSection = () => {
@@ -70,18 +95,6 @@ const MetricsSection = () => {
               fill: true,
               tension: 0.35,
             },
-            {
-              label: "Manual",
-              data: manualData,
-              borderColor: "#B4B2A9",
-              backgroundColor: "rgba(180,178,169,0.07)",
-              borderWidth: 1.5,
-              pointRadius: 3,
-              pointBackgroundColor: "#B4B2A9",
-              fill: true,
-              tension: 0.35,
-              borderDash: [5, 3],
-            },
           ],
         },
         options: {
@@ -99,7 +112,12 @@ const MetricsSection = () => {
           scales: {
             x: {
               grid: { color: gridColor },
-              ticks: { color: tickColor, font: { size: 11 }, autoSkip: false, maxRotation: 0 },
+              ticks: {
+                color: tickColor,
+                font: { size: 10 },
+                autoSkip: false,
+                maxRotation: 45,
+              },
             },
             y: {
               min: 0,
@@ -124,19 +142,16 @@ const MetricsSection = () => {
   }, []);
 
   return (
-    <section id="impacto" className="relative flex flex-col overflow-hidden">
-      <div className="relative flex-1 container mx-auto px-6 py-8 space-y-5">
+    <section id="impacto" className="relative h-screen flex items-center overflow-hidden">
+      <div className="relative w-full container mx-auto px-6 py-8 space-y-5">
 
         {/* Cabeçalho */}
         <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1">
-            <br />
-          </p>
           <h2 className="text-3xl font-bold sm:text-4xl text-foreground">
-            Impacto <span className="text-gradient-forge">real no time</span>
+            Impacto <span className="text-gradient-forge">no time Ecommerce</span>
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            4 máquinas · processamento overnight de 13,5h · comparado ao processo manual do time
+            4 máquinas · processamento overnight de 13,5h · 17h30 às 07h00
           </p>
         </div>
 
@@ -147,10 +162,12 @@ const MetricsSection = () => {
               Ganho de produtividade
             </p>
             <p className="text-sm text-muted-foreground">
-              <span className="text-foreground font-medium">{pixelForgeDaily.toLocaleString("pt-BR")}</span>
-              {" "}vs{" "}
+              <span className="text-foreground font-medium">
+                {pixelForgeDaily.toLocaleString("pt-BR")}
+              </span>
+              {" "}imgs/noite (IA) vs{" "}
               <span className="text-foreground font-medium">{manualDaily}</span>
-              {" "}imgs/dia
+              {" "}imgs/dia (manual)
             </p>
           </div>
           <div className="text-5xl font-bold leading-none" style={{ color: "#7F77DD" }}>
@@ -168,9 +185,7 @@ const MetricsSection = () => {
               <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
                 {m.label}
               </p>
-              <p className="text-2xl font-semibold text-foreground leading-none">
-                {m.value}
-              </p>
+              <p className="text-2xl font-semibold text-foreground leading-none">{m.value}</p>
               <p className="text-xs text-muted-foreground">{m.sub}</p>
               <span
                 className="mt-1 self-start text-[11px] font-medium px-2 py-0.5 rounded-full"
@@ -191,25 +206,21 @@ const MetricsSection = () => {
           <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
             <div>
               <p className="text-sm font-semibold text-foreground">
-                Produção acumulada ao longo do dia
+                Produção acumulada — processamento overnight
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Imagens geradas por hora — manual vs Pixel Forge
+                Imagens processadas pela IA enquanto o time descansa (17h30 → 07h00)
               </p>
             </div>
             <div className="flex gap-4 text-xs text-muted-foreground items-center">
               <span className="flex items-center gap-1.5">
                 <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#7F77DD" }} />
-                Pixel Forge
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#B4B2A9" }} />
-                Manual
+                Pixel Forge (overnight)
               </span>
             </div>
           </div>
 
-          <div className="relative w-full" style={{ height: 260 }}>
+          <div className="relative w-full" style={{ height: 220 }}>
             <canvas ref={chartRef} />
           </div>
         </div>

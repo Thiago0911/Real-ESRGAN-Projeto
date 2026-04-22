@@ -5,7 +5,7 @@ const features = [
   {
     icon: ImageUp,
     title: "Upscaling com IA",
-    description: "Aumente a resolução 2x, 4x ou 8x mantendo a nitidez e detalhes perfeitos.",
+    description: "Aumente a resolução 4x mantendo a nitidez e detalhes perfeitos.",
   },
   {
     icon: Scissors,
@@ -36,15 +36,15 @@ const features = [
 
 const FeaturesSection = () => {
   return (
-    <section id="features" className="py-24 relative">
+    <section id="features" className="relative h-screen flex items-center">
       <div className="absolute inset-0 bg-grid-pattern opacity-10" />
-      <div className="container relative mx-auto px-6">
+      <div className="container relative mx-auto px-6 py-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
           <h2 className="text-3xl font-bold sm:text-4xl lg:text-5xl">
             Ferramentas de <span className="text-gradient-forge">nível profissional</span>
