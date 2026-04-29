@@ -4,18 +4,18 @@ import { ImageUp, Scissors, Layers, Download, Sparkles, ShieldCheck } from "luci
 const features = [
   {
     icon: ImageUp,
-    title: "Upscaling com IA",
-    description: "Aumente a resolução 4x mantendo a nitidez e detalhes perfeitos.",
+    title: "",
+    description: "",
   },
   {
     icon: Scissors,
-    title: "Remoção de Fundo",
-    description: "Remova fundos automaticamente com recorte preciso de bordas e cabelo.",
+    title: "",
+    description: "",
   },
   {
     icon: Layers,
-    title: "Processamento em Lote",
-    description: "Processe centenas de imagens de uma vez com presets customizáveis.",
+    title: "",
+    description: "",
   },
   {
     icon: Download,
@@ -29,8 +29,8 @@ const features = [
   },
   {
     icon: ShieldCheck,
-    title: "Privacidade e controle",
-    description: "As imagens não saem da máquina — mais segurança para dados internos.",
+    title: "",
+    description: "",
   },
 ];
 

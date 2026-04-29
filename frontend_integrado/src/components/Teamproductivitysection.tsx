@@ -44,7 +44,7 @@ const kpis = [
   },
   {
     icon: ImageIcon,
-    label: "Imgs / hora",
+    label: "Imagens / hora",
     value: `${HOURLY_TOTAL}`,
     sub: "Soma dos 4 analistas",
     badge: "Base de cálculo",
@@ -52,7 +52,7 @@ const kpis = [
   },
   {
     icon: TrendingDown,
-    label: "Imgs / dia",
+    label: "Imagens / dia",
     value: `${DAILY_TOTAL}`,
     sub: `${HOURLY_TOTAL}/h × ${WORK_HOURS}h efetivas`,
     badge: "Capacidade atual",
@@ -218,8 +218,8 @@ const ManualProductivitySection = () => {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-3xl font-bold sm:text-4xl text-foreground">
-            Capacidade do{" "}
-            <span className="text-gradient-forge">time manual</span>
+            Time ecommerce sem o{" "}
+            <span className="text-gradient-forge"> Pixel Forge</span>
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             4 analistas · 8h efetivas/dia · 07h00–17h30 · intervalo 11h–12h30

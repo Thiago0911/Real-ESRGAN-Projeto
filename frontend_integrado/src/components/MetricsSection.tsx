@@ -25,14 +25,14 @@ const forgeData = hours.map((_, i) =>
 
 const metrics = [
   {
-    label: "Imgs / hora",
+    label: "Imagens / hora",
     value: pixelForgeHourly.toLocaleString("pt-BR"),
     sub: `Antes: ${manualHourly}/h`,
     badge: `↑ +${Math.round((pixelForgeHourly / manualHourly - 1) * 100)}%`,
     type: "up",
   },
   {
-    label: "Imgs / dia",
+    label: "Imagens / dia",
     value: pixelForgeDaily.toLocaleString("pt-BR"),
     sub: `Antes: ${manualDaily}/dia`,
     badge: `↑ +${Math.round((pixelForgeDaily / manualDaily - 1) * 100)}%`,
@@ -148,7 +148,7 @@ const MetricsSection = () => {
         {/* Cabeçalho */}
         <div>
           <h2 className="text-3xl font-bold sm:text-4xl text-foreground">
-            Impacto <span className="text-gradient-forge">no time Ecommerce</span>
+            Time Ecommerce <span className="text-gradient-forge">Com o Pixel Forge</span>
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             4 máquinas · processamento overnight de 13,5h · 17h30 às 07h00
@@ -165,9 +165,9 @@ const MetricsSection = () => {
               <span className="text-foreground font-medium">
                 {pixelForgeDaily.toLocaleString("pt-BR")}
               </span>
-              {" "}imgs/noite (IA) vs{" "}
+              {" "}imagens/dia (IA) vs{" "}
               <span className="text-foreground font-medium">{manualDaily}</span>
-              {" "}imgs/dia (manual)
+              {" "}imagens/dia (manual)
             </p>
           </div>
           <div className="text-5xl font-bold leading-none" style={{ color: "#7F77DD" }}>

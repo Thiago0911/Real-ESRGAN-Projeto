@@ -56,10 +56,11 @@ const HeroSection = () => {
             Qualidade profissional em poucos cliques, com padronização do catálogo e ganho de produtividade para o time.
           </p>
 
+          {/*
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a href={INTERNAL_APP_URL}>
               <button className="inline-flex items-center justify-center h-14 px-10 rounded-xl text-lg font-semibold bg-forge-gradient text-primary-foreground glow-forge hover:brightness-110 transition-all gap-2">
-                Testar agora
+                Ver Mais
                 <ArrowRight className="h-5 w-5" />
               </button>
             </a>
@@ -71,6 +72,7 @@ const HeroSection = () => {
               </button>
             </a>
           </div>
+          */}
 
           {/* Stats */}
           <motion.div
@@ -80,11 +82,12 @@ const HeroSection = () => {
             className="mt-10 grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-2xl mx-auto"
           >
             {[
-              { value: "1 clique", label: "Pipeline automático (upload → output)" },
-              { value: "Mais velocidade", label: "Processamento local otimizado" },
-              { value: "4× nitidez", label: "Detalhes mais claros no produto" },
-              { value: "Escalável", label: "Lotes para catálogo inteiro" },
-              { value: "Mais conversão", label: "Imagens melhores geram confiança" },
+              { value: "Poucos cliques", label: "Pipeline automático (upload → output)" },
+              { value: "Upscaling com IA", label: "Aumente a resolução 4x mantendo a nitidez e detalhes perfeitos." },
+              { value: "Processamento em Lote", label: "Processe centenas de imagens de uma vez." },
+              { value: "Remoção de Fundo", label: "Remova fundos automaticamente com recorte preciso de bordas." },
+              { value: "Privacidade e controle", label: "As imagens não saem da máquina — mais segurança para dados internos." },
+           // { value: "Mais conversão", label: "Imagens melhores geram confiança" },
               { value: "Padrão PMZ", label: "Consistência visual no e-commerce" },
             ].map((stat) => (
               <div key={stat.label} className="rounded-2xl border border-border bg-card/40 p-4">

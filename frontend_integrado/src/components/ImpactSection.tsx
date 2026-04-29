@@ -16,12 +16,12 @@ const cards = [
   },
   {
     icon: Timer,
-    title: "Menos retrabalho",
-    desc: "Automatiza ajustes e libera o time para tarefas mais estratégicas.",
+    title: "Redução de retrabalho",
+    desc: "Automatiza ajustes e otimiza o time para tarefas mais estratégicas.",
   },
   {
     icon: ShieldCheck,
-    title: "Jornada melhor",
+    title: "Melhoria da Jornada de Compra",
     desc: "Experiência mais clara e profissional, alinhada à marca PMZ.",
   },
 ];
@@ -81,7 +81,7 @@ const ImpactSection = () => {
             onClick={handleCTA}
             className="inline-flex items-center justify-center h-14 px-10 rounded-xl text-lg font-semibold bg-forge-gradient text-primary-foreground glow-forge hover:brightness-110 transition-all"
           >
-            Testar agora
+            Demostração
           </button>
         </div>
       </section>

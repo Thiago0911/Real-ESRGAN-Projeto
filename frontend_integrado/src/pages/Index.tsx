@@ -1,13 +1,13 @@
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
-import FeaturesSection from "@/components/FeaturesSection";
 import DemoSection from "@/components/DemoSection";
 import ImpactSection from "@/components/ImpactSection";
 import MetricsSection from "@/components/MetricsSection";
 import ComparisonSection from "@/components/ComparisonSection";
-import PipelineSection from "@/components/PipelineSection";
+//import PipelineSection from "@/components/PipelineSection";
 import TeamProductivitySection from "@/components/Teamproductivitysection";
 import RoiSection from "@/components/Roisection";
+import TechStackSection from "@/components/Techstacksection";
 
 const Index = () => {
   return (
@@ -20,10 +20,7 @@ const Index = () => {
         <TeamProductivitySection />
       </section>
       <section className="snap-start h-screen">
-        <FeaturesSection />
-      </section>
-      <section className="snap-start h-screen">
-        <PipelineSection />
+        <TechStackSection />
       </section>
       <section className="snap-start h-screen">
         <MetricsSection />
