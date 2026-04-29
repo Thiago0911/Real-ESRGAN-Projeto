@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Check, X, Sparkles } from "lucide-react";
+import SectionBackground from "@/components/ui/SectionBackground";
 
 const tools = [
   {
@@ -80,8 +81,10 @@ const tools = [
 const ComparisonSection = () => {
   return (
     <section id="comparativo" className="relative h-screen flex items-center overflow-hidden">
-      <div className="absolute inset-0 bg-grid-pattern opacity-10" />
-      <div className="container relative mx-auto px-6 py-8">
+      {/* Background — mesmo padrão da HeroSection */}
+      <SectionBackground showOrb={false} imageOpacity={0.2} gridOpacity={0.1} />
+
+      <div className="container relative z-10 mx-auto px-6 py-8">
 
         {/* Cabeçalho */}
         <motion.div
@@ -111,7 +114,7 @@ const ComparisonSection = () => {
               className={`relative rounded-2xl border p-6 flex flex-col transition-all duration-300 ${
                 tool.highlight
                   ? "border-primary/50 bg-primary/5 shadow-[0_0_40px_-10px] shadow-primary/20"
-                  : "border-border bg-card"
+                  : "border-border bg-card/60 backdrop-blur-sm"
               }`}
             >
               {/* Badge */}

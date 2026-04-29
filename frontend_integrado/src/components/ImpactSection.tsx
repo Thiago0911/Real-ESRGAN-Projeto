@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { TrendingUp, Timer, ShieldCheck, Sparkles, Flame } from "lucide-react";
 import { INTERNAL_APP_URL } from "@/lib/links";
+import SectionBackground from "@/components/ui/SectionBackground";
 
 const cards = [
   {
@@ -31,10 +32,11 @@ const ImpactSection = () => {
   };
 
   return (
-    <div className="relative h-full flex flex-col justify-center">
-      <div className="absolute inset-0 bg-grid-pattern opacity-10" />
+    <div className="relative h-full flex flex-col justify-center overflow-hidden">
+      {/* Background — mesmo padrão da HeroSection */}
+      <SectionBackground showOrb={false} imageOpacity={0.2} gridOpacity={0.1} />
 
-      <section id="impacto" className="relative container mx-auto px-6 py-16">
+      <section id="impacto" className="relative z-10 container mx-auto px-6 py-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -60,7 +62,7 @@ const ImpactSection = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.08 }}
-              className="group relative rounded-2xl border border-border bg-card p-8 hover:border-primary/30 transition-all duration-300"
+              className="group relative rounded-2xl border border-border bg-card/60 backdrop-blur-sm p-8 hover:border-primary/30 transition-all duration-300"
             >
               <div className="absolute inset-0 rounded-2xl bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <div className="relative">
@@ -85,7 +87,7 @@ const ImpactSection = () => {
       </section>
 
       {/* Footer sobreposto no rodapé da seção */}
-      <footer className="absolute bottom-0 left-0 right-0 border-t border-border/20 bg-transparent py-4">
+      <footer className="relative z-10 border-t border-border/20 bg-transparent py-4">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">

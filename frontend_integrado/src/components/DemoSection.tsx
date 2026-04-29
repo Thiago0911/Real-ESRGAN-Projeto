@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import BeforeAfterSlider from "./BeforeAfterSlider";
+import SectionBackground from "@/components/ui/SectionBackground";
 
 import autoPartBefore from "@/assets/auto-part-before.jpg";
 import autoPartAfter from "@/assets/auto-part-after.jpg";
@@ -33,7 +34,10 @@ const demos = [
 const DemoSection = () => {
   return (
     <section id="demo" className="relative h-screen flex items-center overflow-hidden">
-      <div className="container mx-auto px-6">
+      {/* Background — mesmo padrão da HeroSection */}
+      <SectionBackground showOrb={false} imageOpacity={0.25} gridOpacity={0.15} />
+
+      <div className="relative z-10 container mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
