@@ -7,12 +7,12 @@ import SectionBackground from "@/components/ui/SectionBackground";
 const TEAM_MEMBERS = [
   { name: "Thiago",  hourly: 20, color: "#7F77DD" },
   { name: "Raphael", hourly: 20, color: "#1D9E75" },
-  { name: "Rodrigo", hourly: 10, color: "#BA7517" },
+  { name: "Rodrigo", hourly: 20, color: "#BA7517" },
   { name: "Matheus", hourly: 20, color: "#378ADD" },
 ];
 
 const WORK_HOURS        = 8;
-const HOURLY_TOTAL      = TEAM_MEMBERS.reduce((s, m) => s + m.hourly, 0); // 70
+const HOURLY_TOTAL      = TEAM_MEMBERS.reduce((s, m) => s + m.hourly, 0); // 80
 const DAILY_TOTAL       = HOURLY_TOTAL * WORK_HOURS;                       // 560
 const DAILY_AVG_ANALYST = Math.round(DAILY_TOTAL / TEAM_MEMBERS.length);   // 140
 

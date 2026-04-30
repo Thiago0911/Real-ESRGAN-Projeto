@@ -9,7 +9,7 @@ const TEAM_SIZE = 4;
 const TOOLS_COST = [
   { name: "Pixlr",    monthly: 49.9  * TEAM_SIZE },   // R$ 199,60
   { name: "Picwish",  monthly: 139   * TEAM_SIZE },   // R$ 556,00
-  { name: "Claid.ai", monthly: 49 * 5.2 * TEAM_SIZE }, // US$49 → ~R$254,80/user
+  { name: "Claid.ai", monthly: 49 * 5.02 * TEAM_SIZE }, // US$49 → ~R$245,98/user
 ];
 const AVG_TOOL_COST = Math.round(
   TOOLS_COST.reduce((s, t) => s + t.monthly, 0) / TOOLS_COST.length
@@ -146,7 +146,7 @@ const ROISection = () => {
             Custo mensal por ferramenta — 4 usuários
           </p>
           <p className="text-xs text-muted-foreground mb-5">
-            Valores em R$. Claid.ai convertido a R$ 5,20/US$.
+            Valores em R$. Claid.ai convertido a R$ 5,02/US$ - Fonte: Morningstar
           </p>
 
           <div className="space-y-3">
