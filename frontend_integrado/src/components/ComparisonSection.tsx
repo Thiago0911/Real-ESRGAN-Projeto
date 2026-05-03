@@ -11,7 +11,7 @@ const tools = [
     highlight: true,
     features: [
       { label: "Sem limite de créditos diários", available: true },
-      { label: "Upscaling com IA (2×–4×)", available: true },
+      { label: "Upscaling com IA (4×)", available: true },
       { label: "Remoção de fundo automática", available: true },
       { label: "Processamento em lote", available: true },
       { label: "Enhancement automático", available: true },
@@ -48,7 +48,7 @@ const tools = [
     highlight: false,
     features: [
       { label: "2000 créditos mensais", available: true },
-      { label: "Upscaling com IA (2×–4×)", available: true },
+      { label: "Upscaling com IA (4×)", available: true },
       { label: "Remoção de fundo automática", available: true },
       { label: "Processamento em lote", available: true },
       { label: "Enhancement automático", available: true },

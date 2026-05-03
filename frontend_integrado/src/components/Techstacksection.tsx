@@ -23,6 +23,12 @@ const layers = [
         badge: "v5",
       },
       {
+        name: "Chart.js",
+        icon: "📊",
+        desc: "Renderização de gráficos interativos e responsivos no frontend",
+        badge: "v4",
+      },
+      {
         name: "systeminformation",
         icon: "🖥️",
         desc: "Coleta dados de hardware local em tempo real",

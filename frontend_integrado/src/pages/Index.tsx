@@ -4,10 +4,12 @@ import DemoSection from "@/components/DemoSection";
 import ImpactSection from "@/components/ImpactSection";
 import MetricsSection from "@/components/MetricsSection";
 import ComparisonSection from "@/components/ComparisonSection";
-//import PipelineSection from "@/components/PipelineSection";
+import PipelineSection from "@/components/FlowSection";
 import TeamProductivitySection from "@/components/Teamproductivitysection";
 import RoiSection from "@/components/Roisection";
 import TechStackSection from "@/components/Techstacksection";
+import FlowSection from "@/components/FlowSection";
+import PixelForgeProductivitySection from "@/components/PixelForgeProductivitySection";
 
 const Index = () => {
   return (
@@ -20,10 +22,16 @@ const Index = () => {
         <TeamProductivitySection />
       </section>
       <section className="snap-start h-screen">
+        <FlowSection />
+      </section>
+      <section className="snap-start h-screen">
         <TechStackSection />
       </section>
       <section className="snap-start h-screen">
         <MetricsSection />
+      </section>
+      <section className="snap-start h-screen">
+        <PixelForgeProductivitySection />
       </section>
       <section className="snap-start h-screen">
         <DemoSection />
