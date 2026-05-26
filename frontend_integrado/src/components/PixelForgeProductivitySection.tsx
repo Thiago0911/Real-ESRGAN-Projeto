@@ -27,10 +27,47 @@ const AFTER_PER_ANALYST_DAY = Math.round(TOTAL_DAY / TEAM_SIZE); // 640
 const AFTER_PER_ANALYST_HOUR = Math.round(AFTER_PER_ANALYST_DAY / WORK_HOURS); // 80
 
 /* VOLUMES */
-const SUPPLIER_VOLUMES = [600, 800, 1000, 1200, 1500, 1800, 2100, 2400, 2700, 3000, 3200, 3500];
+const SUPPLIER_VOLUMES = [
+  600, 800, 1000, 1200, 1500, 1800,
+  2100, 2400, 2700, 3000, 3200, 3500,
+];
 
 const PURPLE = "#7F77DD";
 const GREEN = "#1D9E75";
+
+/* ───────────────── HELPERS ───────────────── */
+function growthPercent(before: number, after: number) {
+  if (!before || before <= 0) return 0;
+  return ((after - before) / before) * 100;
+}
+
+function formatPercent(value: number) {
+  return `${value > 0 ? "+" : ""}${value.toLocaleString("pt-BR", {
+    minimumFractionDigits: value % 1 === 0 ? 0 : 1,
+    maximumFractionDigits: 1,
+  })}%`;
+}
+
+/* Ganhos principais */
+const GAIN_PER_ANALYST_HOUR = growthPercent(
+  BEFORE_PER_ANALYST_HOUR,
+  AFTER_PER_ANALYST_HOUR
+); // +300%
+
+const GAIN_PER_ANALYST_DAY = growthPercent(
+  BEFORE_PER_ANALYST_DAY,
+  AFTER_PER_ANALYST_DAY
+); // +300%
+
+const GAIN_TOTAL_DAY = growthPercent(
+  MANUAL_DAILY,
+  TOTAL_DAY
+); // +300%
+
+const AI_EXTRA_VS_MANUAL = growthPercent(
+  MANUAL_DAILY,
+  MANUAL_DAILY + AI_OVERNIGHT
+); // +312.5%
 
 /* KPIs PADRÃO */
 const kpis = [
@@ -39,6 +76,7 @@ const kpis = [
     label: "Imgs / hora / analista",
     value: `${BEFORE_PER_ANALYST_HOUR} → ${AFTER_PER_ANALYST_HOUR}`,
     sub: "Produtividade individual",
+    gain: `${formatPercent(GAIN_PER_ANALYST_HOUR)} de aumento`,
     badge: "Antes vs depois",
   },
   {
@@ -46,20 +84,23 @@ const kpis = [
     label: "Imgs / dia / analista",
     value: `${BEFORE_PER_ANALYST_DAY} → ${AFTER_PER_ANALYST_DAY}`,
     sub: "Capacidade diária individual",
+    gain: `${formatPercent(GAIN_PER_ANALYST_DAY)} de aumento`,
     badge: "Com IA",
   },
   {
     icon: Layers,
     label: "Volume adicional",
-    value: `+${AI_OVERNIGHT}`,
+    value: `+${AI_OVERNIGHT.toLocaleString("pt-BR")}`,
     sub: "Gerado fora do expediente",
+    gain: `${formatPercent(AI_EXTRA_VS_MANUAL)} sobre o manual diário`,
     badge: "Overnight",
   },
   {
     icon: TrendingUp,
     label: "Produção total / dia",
-    value: `${MANUAL_DAILY} → ${TOTAL_DAY}`,
+    value: `${MANUAL_DAILY} → ${TOTAL_DAY.toLocaleString("pt-BR")}`,
     sub: "Time + automação",
+    gain: `${formatPercent(GAIN_TOTAL_DAY)} de aumento`,
     badge: "Escala",
   },
 ];
@@ -68,6 +109,7 @@ const kpis = [
 function useChartJs(cb: () => void) {
   useEffect(() => {
     if ((window as any).Chart) return cb();
+
     const s = document.createElement("script");
     s.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
     s.onload = cb;
@@ -77,6 +119,7 @@ function useChartJs(cb: () => void) {
 
 function theme() {
   const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
   return {
     grid: dark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)",
     tick: dark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.38)",
@@ -89,11 +132,12 @@ const CoverageCompareChart = () => {
 
   useChartJs(() => {
     if (!ref.current) return;
+
     inst.current?.destroy();
 
     const { grid, tick } = theme();
 
-    // 🔥 sempre por analista (igual manual)
+    // 🔥 Sempre por analista, igual manual
     const daysManual = SUPPLIER_VOLUMES.map((v) =>
       Math.round((v / BEFORE_PER_ANALYST_DAY) * 10) / 10
     );
@@ -140,15 +184,45 @@ const CoverageCompareChart = () => {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        layout: { padding: { top: 24, bottom: 30 } },
-        plugins: { legend: { display: false } },
+        layout: {
+          padding: {
+            top: 24,
+            bottom: 30,
+          },
+        },
+        plugins: {
+          legend: {
+            display: false,
+          },
+          tooltip: {
+            callbacks: {
+              label(context: any) {
+                const label = context.dataset.label || "";
+                const value = context.raw;
+
+                if (label === "Limite crítico (5d)") {
+                  return "Limite crítico: 5 dias";
+                }
+
+                return `${label}: ${value} dias`;
+              },
+            },
+          },
+        },
         scales: {
           x: {
-            grid: { color: grid },
-            ticks: { color: "#6B7280", autoSkip: false },
+            grid: {
+              color: grid,
+            },
+            ticks: {
+              color: "#6B7280",
+              autoSkip: false,
+            },
           },
           y: {
-            grid: { color: grid },
+            grid: {
+              color: grid,
+            },
             ticks: {
               color: tick,
               callback: (v: number) => v + " dias",
@@ -158,7 +232,7 @@ const CoverageCompareChart = () => {
         },
       },
 
-      // 🔥 labels visíveis (igual manual)
+      // 🔥 Labels visíveis
       plugins: [
         {
           id: "pointLabels",
@@ -208,7 +282,10 @@ const CoverageCompareChart = () => {
     });
   });
 
-  useEffect(() => () => inst.current?.destroy(), []);
+  useEffect(() => {
+    return () => inst.current?.destroy();
+  }, []);
+
   return <canvas ref={ref} />;
 };
 
@@ -219,12 +296,13 @@ const PixelForgeProductivitySection = () => {
       <SectionBackground />
 
       <div className="relative z-10 w-full container mx-auto px-6 py-8 space-y-5">
-
         {/* HEADER */}
         <div>
           <h2 className="text-3xl font-bold text-foreground">
-            Produtividade do time com <span className="text-gradient-forge">Pixel Forge</span>
+            Produtividade do time com{" "}
+            <span className="text-gradient-forge">Pixel Forge</span>
           </h2>
+
           <p className="text-sm text-muted-foreground mt-1">
             Produção manual durante o dia + apoio automatizado fora do expediente
           </p>
@@ -239,15 +317,25 @@ const PixelForgeProductivitySection = () => {
             >
               <div className="flex items-center gap-2">
                 <k.icon size={14} style={{ color: PURPLE }} />
+
                 <p className="text-xs text-muted-foreground uppercase">
                   {k.label}
                 </p>
               </div>
 
               <p className="text-2xl font-semibold">{k.value}</p>
+
               <p className="text-xs text-muted-foreground">{k.sub}</p>
 
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 w-fit">
+              {/* 🔥 Percentual de ganho */}
+              <p
+                className="text-[11px] font-semibold mt-0.5"
+                style={{ color: GREEN }}
+              >
+                {k.gain}
+              </p>
+
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 w-fit mt-1">
                 {k.badge}
               </span>
             </div>
@@ -265,6 +353,7 @@ const PixelForgeProductivitySection = () => {
               <span className="w-2 h-2 bg-red-500 rounded-sm" />
               Manual
             </span>
+
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2" style={{ background: GREEN }} />
               Manual + IA
@@ -275,7 +364,6 @@ const PixelForgeProductivitySection = () => {
             <CoverageCompareChart />
           </div>
         </div>
-
       </div>
     </section>
   );
