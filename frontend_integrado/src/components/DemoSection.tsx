@@ -11,12 +11,12 @@ import bgRemoveAfter from "@/assets/bg-remove-after.jpg";
 const demos = [
   {
     icon: "🔧",
-    title: "Enhancement de Peça Automotiva",
+    title: "Aumento de resolução",
     beforeImage: autoPartBefore,
     afterImage: autoPartAfter,
     beforeLabel: "Antes",
     afterLabel: "Depois",
-    caption: "Upscaling 4x com recuperação de nitidez",
+    caption: "Resolução ampliada em 4×, com mais nitidez e definição dos detalhes.",
     fit: "contain" as const,
   },
   {
@@ -26,7 +26,7 @@ const demos = [
     afterImage: bgRemoveAfter,
     beforeLabel: "Original",
     afterLabel: "Sem fundo",
-    caption: "Recorte automático com precisão de bordas",
+    caption: "Recorte automático para padronização das imagens do catálogo.",
     fit: "cover" as const,
   },
 ];
@@ -46,10 +46,10 @@ const DemoSection = () => {
           className="text-center mb-10"
         >
           <h2 className="text-3xl font-bold sm:text-4xl lg:text-5xl">
-            Veja a <span className="text-gradient-forge">diferença</span>
+            Da imagem original ao <span className="text-gradient-forge">padrão de catálogo</span>
           </h2>
           <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
-            Arraste a seta para comparar o antes e depois — resultados reais com IA.
+            Arraste o controle para comparar a imagem original com o resultado processado pelo Pixel Forge.
           </p>
         </motion.div>
 

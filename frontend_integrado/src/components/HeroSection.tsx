@@ -36,13 +36,13 @@ const HeroSection = () => {
             className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary"
           >
             <Sparkles className="h-4 w-4" />
-            IA aplicada para padronizar imagens do e-commerce PMZ
+            IA local para acelerar e padronizar o catálogo PMZ
           </motion.div>
 
           <h1 className="text-5xl font-bold leading-tight tracking-tight sm:text-6xl lg:text-7xl">
-            <span className="block">Transforme pixels em</span>
+            <span className="block">Imagens melhores</span>
             <Typewriter
-              words={["obras-primas", "arte", "resultados profissionais", "imagens incríveis"]}
+              words={["Catálogo no padrão PMZ", "Operação mais rápida", "Resultados profissionais"]}
               className="text-gradient-forge block whitespace-nowrap md:whitespace-normal"
               cursorClassName="animate-pulse"
               typingSpeedMs={70}
@@ -52,8 +52,8 @@ const HeroSection = () => {
           </h1>
 
           <p className="mt-5 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Aumente a resolução, remova fundos e otimize suas imagens com IA.
-            Qualidade profissional em poucos cliques, com padronização do catálogo e ganho de produtividade para o time.
+            Uma solução de IA local que aumenta a resolução, remove fundos e processa imagens em lote,
+            reduzindo tarefas manuais e acelerando a preparação do catálogo para o e-commerce.
           </p>
 
           {/*
@@ -74,7 +74,7 @@ const HeroSection = () => {
           </div>
           */}
 
-          {/* Stats */}
+          {/* Diferenciais */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -82,13 +82,13 @@ const HeroSection = () => {
             className="mt-10 grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-2xl mx-auto"
           >
             {[
-              { value: "Poucos cliques", label: "Pipeline automático (upload → output)" },
-              { value: "Upscaling com IA", label: "Aumente a resolução 4x mantendo a nitidez e detalhes perfeitos." },
-              { value: "Processamento em Lote", label: "Processe centenas de imagens de uma vez." },
-              { value: "Remoção de Fundo", label: "Remova fundos automaticamente com recorte preciso de bordas." },
-              { value: "Privacidade e controle", label: "As imagens não saem da máquina — mais segurança para dados internos." },
+              { value: "Resolução 4x", label: "Mais nitidez para destacar cada produto." },
+              { value: "Processamento em lote", label: "Várias imagens preparadas em uma única execução." },
+              { value: "100% local", label: "Mais privacidade, controle e segurança para a operação." },
+           // { value: "Remoção de Fundo", label: "Remova fundos automaticamente com recorte preciso de bordas." },
+           // { value: "Privacidade e controle", label: "As imagens não saem da máquina — mais segurança para dados internos." },
            // { value: "Mais conversão", label: "Imagens melhores geram confiança" },
-              { value: "Padrão PMZ", label: "Consistência visual no e-commerce" },
+           // { value: "Padrão PMZ", label: "Consistência visual no e-commerce" },
             ].map((stat) => (
               <div key={stat.label} className="rounded-2xl border border-border bg-card/40 p-4">
                 <div className="text-xl font-bold font-display text-gradient-forge">{stat.value}</div>

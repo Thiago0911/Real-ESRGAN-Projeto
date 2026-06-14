@@ -1,372 +1,918 @@
 import { useEffect, useRef } from "react";
-import { motion } from "framer-motion";
-import { Clock, ImageIcon, TrendingUp, Layers } from "lucide-react";
+import {
+Clock,
+ImageIcon,
+TrendingUp,
+Users,
+} from "lucide-react";
 import SectionBackground from "@/components/ui/SectionBackground";
 
-/* ───────────────── BASE ───────────────── */
 const WORK_HOURS = 8;
-const REVIEW_HOUR = 1;
+const REVIEW_HOURS = 1;
 
-const TEAM_PER_HOUR = 80;
 const TEAM_SIZE = 4;
+const ANALYST_IMAGES_PER_HOUR = 20;
 
-const MANUAL_DAILY = TEAM_PER_HOUR * WORK_HOURS; // 640
+const MACHINE_CAPACITY_PER_CYCLE = 500;
 
-/* IA */
-const AI_OVERNIGHT = 2000;
+const PIXEL_FORGE_OVERNIGHT_CAPACITY =
+MACHINE_CAPACITY_PER_CYCLE * TEAM_SIZE;
 
-/* REAL */
-const MANUAL_WITH_REVIEW = TEAM_PER_HOUR * (WORK_HOURS - REVIEW_HOUR); // 560
-const TOTAL_DAY = MANUAL_WITH_REVIEW + AI_OVERNIGHT; // 2560
+const INDIVIDUAL_DAILY_CAPACITY =
+ANALYST_IMAGES_PER_HOUR * WORK_HOURS;
 
-/* 🔥 MÉTRICAS POR ANALISTA */
-const BEFORE_PER_ANALYST_HOUR = Math.round(TEAM_PER_HOUR / TEAM_SIZE); // 20
-const BEFORE_PER_ANALYST_DAY = Math.round(MANUAL_DAILY / TEAM_SIZE); // 160
+const INDIVIDUAL_CAPACITY_WITH_REVIEW =
+ANALYST_IMAGES_PER_HOUR *
+(WORK_HOURS - REVIEW_HOURS);
 
-const AFTER_PER_ANALYST_DAY = Math.round(TOTAL_DAY / TEAM_SIZE); // 640
-const AFTER_PER_ANALYST_HOUR = Math.round(AFTER_PER_ANALYST_DAY / WORK_HOURS); // 80
+const INDIVIDUAL_ASSISTED_CAPACITY =
+INDIVIDUAL_CAPACITY_WITH_REVIEW +
+MACHINE_CAPACITY_PER_CYCLE;
 
-/* VOLUMES */
+const TEAM_IMAGES_PER_HOUR =
+ANALYST_IMAGES_PER_HOUR * TEAM_SIZE;
+
+const TEAM_DAILY_CAPACITY =
+TEAM_IMAGES_PER_HOUR * WORK_HOURS;
+
+const TEAM_CAPACITY_WITH_REVIEW =
+TEAM_IMAGES_PER_HOUR *
+(WORK_HOURS - REVIEW_HOURS);
+
+const ASSISTED_OPERATION_CAPACITY =
+TEAM_CAPACITY_WITH_REVIEW +
+PIXEL_FORGE_OVERNIGHT_CAPACITY;
+
+const INDIVIDUAL_CAPACITY_MULTIPLIER =
+INDIVIDUAL_ASSISTED_CAPACITY /
+INDIVIDUAL_DAILY_CAPACITY;
+
+const TEAM_CAPACITY_MULTIPLIER =
+ASSISTED_OPERATION_CAPACITY /
+TEAM_DAILY_CAPACITY;
+
+const INDIVIDUAL_EXTRA_CAPACITY =
+INDIVIDUAL_ASSISTED_CAPACITY -
+INDIVIDUAL_DAILY_CAPACITY;
+
+const TEAM_EXTRA_CAPACITY =
+ASSISTED_OPERATION_CAPACITY -
+TEAM_DAILY_CAPACITY;
+
+const TIME_REDUCTION_PERCENT =
+(1 -
+TEAM_DAILY_CAPACITY /
+ASSISTED_OPERATION_CAPACITY) *
+100;
+
+const MANUAL_HOURS_ABSORBED =
+PIXEL_FORGE_OVERNIGHT_CAPACITY /
+ANALYST_IMAGES_PER_HOUR;
+
 const SUPPLIER_VOLUMES = [
-  600, 800, 1000, 1200, 1500, 1800,
-  2100, 2400, 2700, 3000, 3200, 3500,
+600,
+800,
+1000,
+1200,
+1500,
+1800,
+2100,
+2400,
+2700,
+3000,
+3200,
+3500,
 ];
+
+const REFERENCE_PERIODS = 5;
 
 const PURPLE = "#7F77DD";
+const RED = "#E24B4A";
 const GREEN = "#1D9E75";
 
-/* ───────────────── HELPERS ───────────────── */
-function growthPercent(before: number, after: number) {
-  if (!before || before <= 0) return 0;
-  return ((after - before) / before) * 100;
+function formatNumber(
+value: number,
+maximumFractionDigits = 0
+) {
+return value.toLocaleString("pt-BR", {
+maximumFractionDigits,
+});
 }
 
-function formatPercent(value: number) {
-  return `${value > 0 ? "+" : ""}${value.toLocaleString("pt-BR", {
-    minimumFractionDigits: value % 1 === 0 ? 0 : 1,
-    maximumFractionDigits: 1,
-  })}%`;
-}
-
-/* Ganhos principais */
-const GAIN_PER_ANALYST_HOUR = growthPercent(
-  BEFORE_PER_ANALYST_HOUR,
-  AFTER_PER_ANALYST_HOUR
-); // +300%
-
-const GAIN_PER_ANALYST_DAY = growthPercent(
-  BEFORE_PER_ANALYST_DAY,
-  AFTER_PER_ANALYST_DAY
-); // +300%
-
-const GAIN_TOTAL_DAY = growthPercent(
-  MANUAL_DAILY,
-  TOTAL_DAY
-); // +300%
-
-const AI_EXTRA_VS_MANUAL = growthPercent(
-  MANUAL_DAILY,
-  MANUAL_DAILY + AI_OVERNIGHT
-); // +312.5%
-
-/* KPIs PADRÃO */
 const kpis = [
-  {
-    icon: ImageIcon,
-    label: "Imgs / hora / analista",
-    value: `${BEFORE_PER_ANALYST_HOUR} → ${AFTER_PER_ANALYST_HOUR}`,
-    sub: "Produtividade individual",
-    gain: `${formatPercent(GAIN_PER_ANALYST_HOUR)} de aumento`,
-    badge: "Antes vs depois",
-  },
-  {
-    icon: Clock,
-    label: "Imgs / dia / analista",
-    value: `${BEFORE_PER_ANALYST_DAY} → ${AFTER_PER_ANALYST_DAY}`,
-    sub: "Capacidade diária individual",
-    gain: `${formatPercent(GAIN_PER_ANALYST_DAY)} de aumento`,
-    badge: "Com IA",
-  },
-  {
-    icon: Layers,
-    label: "Volume adicional",
-    value: `+${AI_OVERNIGHT.toLocaleString("pt-BR")}`,
-    sub: "Gerado fora do expediente",
-    gain: `${formatPercent(AI_EXTRA_VS_MANUAL)} sobre o manual diário`,
-    badge: "Overnight",
-  },
-  {
-    icon: TrendingUp,
-    label: "Produção total / dia",
-    value: `${MANUAL_DAILY} → ${TOTAL_DAY.toLocaleString("pt-BR")}`,
-    sub: "Time + automação",
-    gain: `${formatPercent(GAIN_TOTAL_DAY)} de aumento`,
-    badge: "Escala",
-  },
+{
+icon: ImageIcon,
+label: "Potencial individual",
+value: `${formatNumber(
+      INDIVIDUAL_CAPACITY_MULTIPLIER,
+      1
+    )}×`,
+unit: "mais capacidade",
+sub: `${formatNumber(
+      INDIVIDUAL_DAILY_CAPACITY
+    )} → ${formatNumber(
+      INDIVIDUAL_ASSISTED_CAPACITY
+    )} imagens por ciclo`,
+gain: `+${formatNumber(
+      INDIVIDUAL_EXTRA_CAPACITY
+    )} imagens por analista`,
+badge: "Analista potencializado",
+},
+{
+icon: Users,
+label: "Potencial da equipe",
+value: `${formatNumber(
+      TEAM_CAPACITY_MULTIPLIER,
+      1
+    )}×`,
+unit: "mais capacidade",
+sub: `${formatNumber(
+      TEAM_DAILY_CAPACITY
+    )} → ${formatNumber(
+      ASSISTED_OPERATION_CAPACITY
+    )} imagens por ciclo`,
+gain: `+${formatNumber(
+      TEAM_EXTRA_CAPACITY
+    )} imagens por ciclo`,
+badge: "Equipe potencializada",
+},
+{
+icon: Clock,
+label: "Redução de prazo",
+value: `-${formatNumber(
+      TIME_REDUCTION_PERCENT
+    )}%`,
+unit: "no tempo estimado",
+sub: "Menor dependência de horas manuais",
+gain: "Mais velocidade para o go-live",
+badge: "Eficiência operacional",
+},
+{
+icon: TrendingUp,
+label: "Esforço automatizado",
+value: `${formatNumber(
+      MANUAL_HOURS_ABSORBED
+    )}h`,
+unit: "de esforço manual",
+sub: `Equivalente a ${formatNumber(
+      PIXEL_FORGE_OVERNIGHT_CAPACITY
+    )} imagens`,
+gain: "Executadas fora do expediente",
+badge: "Tempo liberado",
+},
 ];
 
-/* ───────────────── CHART ───────────────── */
-function useChartJs(cb: () => void) {
-  useEffect(() => {
-    if ((window as any).Chart) return cb();
-
-    const s = document.createElement("script");
-    s.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
-    s.onload = cb;
-    document.head.appendChild(s);
-  }, []);
+function useChartJs(callback: () => void) {
+useEffect(() => {
+if ((window as any).Chart) {
+callback();
+return;
 }
 
-function theme() {
-  const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-  return {
-    grid: dark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)",
-    tick: dark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.38)",
+const existingScript =
+  document.querySelector<HTMLScriptElement>(
+    'script[data-chartjs="true"]'
+  );
+
+if (existingScript) {
+  existingScript.addEventListener(
+    "load",
+    callback,
+    { once: true }
+  );
+
+  return () => {
+    existingScript.removeEventListener(
+      "load",
+      callback
+    );
   };
 }
 
-const CoverageCompareChart = () => {
-  const ref = useRef<HTMLCanvasElement>(null);
-  const inst = useRef<any>(null);
+const script =
+  document.createElement("script");
 
-  useChartJs(() => {
-    if (!ref.current) return;
+script.src =
+  "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
 
-    inst.current?.destroy();
+script.dataset.chartjs = "true";
+script.async = true;
+script.onload = callback;
 
-    const { grid, tick } = theme();
+document.head.appendChild(script);
 
-    // 🔥 Sempre por analista, igual manual
-    const daysManual = SUPPLIER_VOLUMES.map((v) =>
-      Math.round((v / BEFORE_PER_ANALYST_DAY) * 10) / 10
-    );
+return () => {
+  script.onload = null;
+};
 
-    const daysAI = SUPPLIER_VOLUMES.map((v) =>
-      Math.round((v / AFTER_PER_ANALYST_DAY) * 10) / 10
-    );
 
-    inst.current = new (window as any).Chart(ref.current, {
-      type: "line",
-      data: {
-        labels: SUPPLIER_VOLUMES.map((v) => v.toLocaleString("pt-BR")),
-        datasets: [
-          {
-            label: "Manual",
-            data: daysManual,
-            borderColor: "#E24B4A",
-            backgroundColor: "rgba(226,75,74,0.07)",
-            pointBackgroundColor: "#E24B4A",
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3,
-          },
-          {
-            label: "Manual + IA",
-            data: daysAI,
-            borderColor: GREEN,
-            backgroundColor: "rgba(29,158,117,0.10)",
-            pointBackgroundColor: GREEN,
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3,
-          },
-          {
-            label: "Limite crítico (5d)",
-            data: SUPPLIER_VOLUMES.map(() => 5),
-            borderColor: "#E24B4A",
-            borderDash: [5, 4],
-            borderWidth: 1.5,
-            pointRadius: 0,
-          },
-        ],
+}, []);
+}
+
+function getTheme() {
+const dark = window.matchMedia(
+"(prefers-color-scheme: dark)"
+).matches;
+
+return {
+grid: dark
+? "rgba(255,255,255,0.07)"
+: "rgba(0,0,0,0.06)",
+tick: dark
+? "rgba(255,255,255,0.38)"
+: "rgba(0,0,0,0.38)",
+};
+}
+
+type CapacityComparisonChartProps = {
+manualCapacity: number;
+assistedCapacity: number;
+mode: "individual" | "team";
+};
+
+const CapacityComparisonChart = ({
+manualCapacity,
+assistedCapacity,
+mode,
+}: CapacityComparisonChartProps) => {
+const canvasRef =
+useRef<HTMLCanvasElement>(null);
+
+const chartInstance =
+useRef<any>(null);
+
+useChartJs(() => {
+if (!canvasRef.current) return;
+
+
+chartInstance.current?.destroy();
+
+const { grid, tick } =
+  getTheme();
+
+const manualPeriods =
+  SUPPLIER_VOLUMES.map(
+    (volume) =>
+      Number(
+        (
+          volume /
+          manualCapacity
+        ).toFixed(1)
+      )
+  );
+
+const assistedPeriods =
+  SUPPLIER_VOLUMES.map(
+    (volume) =>
+      Number(
+        (
+          volume /
+          assistedCapacity
+        ).toFixed(1)
+      )
+  );
+
+const manualLabel =
+  mode === "individual"
+    ? "1 analista — manual"
+    : "Equipe — manual";
+
+const assistedLabel =
+  mode === "individual"
+    ? "Analista + Pixel Forge"
+    : "Equipe + Pixel Forge";
+
+chartInstance.current = new (
+  window as any
+).Chart(canvasRef.current, {
+  type: "line",
+
+  data: {
+    labels: SUPPLIER_VOLUMES.map(
+      (volume) =>
+        formatNumber(volume)
+    ),
+
+    datasets: [
+      {
+        label: manualLabel,
+        data: manualPeriods,
+        borderColor: RED,
+        backgroundColor:
+          "rgba(226,75,74,0.07)",
+        pointBackgroundColor: RED,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        borderWidth: 2,
+        fill: false,
+        tension: 0.3,
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        layout: {
-          padding: {
-            top: 24,
-            bottom: 30,
+      {
+        label: assistedLabel,
+        data: assistedPeriods,
+        borderColor: GREEN,
+        backgroundColor:
+          "rgba(29,158,117,0.10)",
+        pointBackgroundColor:
+          GREEN,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3,
+      },
+      {
+        label: `Referência de ${REFERENCE_PERIODS} períodos`,
+        data: SUPPLIER_VOLUMES.map(
+          () => REFERENCE_PERIODS
+        ),
+        borderColor: PURPLE,
+        borderDash: [5, 4],
+        borderWidth: 1.5,
+        pointRadius: 0,
+      },
+    ],
+  },
+
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+
+    layout: {
+      padding: {
+        top: 24,
+        bottom: 10,
+        left: 4,
+        right: 4,
+      },
+    },
+
+    interaction: {
+      mode: "index",
+      intersect: false,
+    },
+
+    plugins: {
+      legend: {
+        display: false,
+      },
+
+      tooltip: {
+        callbacks: {
+          title: (
+            items: any[]
+          ) =>
+            `${items[0].label} imagens`,
+
+          label: (
+            context: any
+          ) => {
+            const label =
+              context.dataset.label ||
+              "";
+
+            const value =
+              context.raw;
+
+            if (
+              label.startsWith(
+                "Referência"
+              )
+            ) {
+              return `Referência: ${REFERENCE_PERIODS} períodos`;
+            }
+
+            const unit =
+              label.includes("manual")
+                ? "dias"
+                : "ciclos";
+
+            return `${label}: ${formatNumber(
+              value,
+              1
+            )} ${unit}`;
           },
         },
-        plugins: {
-          legend: {
-            display: false,
-          },
-          tooltip: {
-            callbacks: {
-              label(context: any) {
-                const label = context.dataset.label || "";
-                const value = context.raw;
+      },
+    },
 
-                if (label === "Limite crítico (5d)") {
-                  return "Limite crítico: 5 dias";
+    scales: {
+      x: {
+        grid: {
+          color: grid,
+        },
+
+        ticks: {
+          color: "#6B7280",
+          autoSkip: true,
+          maxTicksLimit: 6,
+          padding: 8,
+
+          font: {
+            size: 9,
+          },
+        },
+
+        title: {
+          display: true,
+          text: "Volume de imagens",
+          color: tick,
+
+          font: {
+            size: 10,
+          },
+        },
+      },
+
+      y: {
+        beginAtZero: true,
+
+        grid: {
+          color: grid,
+        },
+
+        ticks: {
+          color: tick,
+
+          font: {
+            size: 9,
+          },
+
+          callback: (
+            value:
+              | number
+              | string
+          ) =>
+            `${value}`,
+        },
+
+        title: {
+          display: true,
+          text: "Períodos necessários",
+          color: tick,
+
+          font: {
+            size: 10,
+          },
+        },
+      },
+    },
+  },
+
+  plugins: [
+    {
+      id: `point-labels-${mode}`,
+
+      afterDatasetsDraw(
+        chart: any
+      ) {
+        const { ctx } = chart;
+
+        [0, 1].forEach(
+          (datasetIndex) => {
+            const dataset =
+              chart.data.datasets[
+                datasetIndex
+              ];
+
+            const meta =
+              chart.getDatasetMeta(
+                datasetIndex
+              );
+
+            dataset.data.forEach(
+              (
+                value: number,
+                index: number
+              ) => {
+                const isLastPoint =
+                  index ===
+                  dataset.data.length -
+                    1;
+
+                const shouldShow =
+                  index % 2 === 0 ||
+                  isLastPoint;
+
+                if (!shouldShow) {
+                  return;
                 }
 
-                return `${label}: ${value} dias`;
-              },
-            },
-          },
-        },
-        scales: {
-          x: {
-            grid: {
-              color: grid,
-            },
-            ticks: {
-              color: "#6B7280",
-              autoSkip: false,
-            },
-          },
-          y: {
-            grid: {
-              color: grid,
-            },
-            ticks: {
-              color: tick,
-              callback: (v: number) => v + " dias",
-            },
-            beginAtZero: true,
-          },
-        },
-      },
+                const point =
+                  meta.data[index];
 
-      // 🔥 Labels visíveis
-      plugins: [
-        {
-          id: "pointLabels",
-          afterDatasetsDraw(chart: any) {
-            const { ctx } = chart;
+                const color =
+                  datasetIndex === 0
+                    ? RED
+                    : GREEN;
 
-            [0, 1].forEach((datasetIdx) => {
-              const dataset = chart.data.datasets[datasetIdx];
-              const meta = chart.getDatasetMeta(datasetIdx);
-              const color = datasetIdx === 0 ? "#E24B4A" : GREEN;
+                const background =
+                  datasetIndex === 0
+                    ? "rgba(226,75,74,0.15)"
+                    : "rgba(29,158,117,0.15)";
 
-              dataset.data.forEach((value: number, i: number) => {
-                const point = meta.data[i];
+                const suffix =
+                  datasetIndex === 0
+                    ? "d"
+                    : "c";
+
+                const verticalOffset =
+                  datasetIndex === 0
+                    ? 10
+                    : 24;
+
+                const text =
+                  `${formatNumber(
+                    value,
+                    1
+                  )}${suffix}`;
+
                 const x = point.x;
                 const y = point.y;
 
                 ctx.save();
-                ctx.font = "bold 10px sans-serif";
-                ctx.textAlign = "center";
 
-                const text = value + "d";
-                const metrics = ctx.measureText(text);
-                const pw = metrics.width + 8;
-                const ph = 14;
+                ctx.font =
+                  "bold 9px sans-serif";
 
-                const px = x - pw / 2;
-                const py = y - 12 - ph;
+                ctx.textAlign =
+                  "center";
+
+                ctx.textBaseline =
+                  "bottom";
+
+                const metrics =
+                  ctx.measureText(
+                    text
+                  );
+
+                const pillWidth =
+                  metrics.width + 8;
+
+                const pillHeight =
+                  14;
+
+                const pillX =
+                  x -
+                  pillWidth / 2;
+
+                const pillY =
+                  y -
+                  verticalOffset -
+                  pillHeight;
 
                 ctx.fillStyle =
-                  datasetIdx === 0
-                    ? "rgba(226,75,74,0.15)"
-                    : "rgba(29,158,117,0.15)";
+                  background;
 
                 ctx.beginPath();
-                ctx.roundRect(px, py, pw, ph, 4);
+
+                ctx.roundRect(
+                  pillX,
+                  pillY,
+                  pillWidth,
+                  pillHeight,
+                  4
+                );
+
                 ctx.fill();
 
-                ctx.fillStyle = color;
-                ctx.fillText(text, x, y - 10);
+                ctx.fillStyle =
+                  color;
+
+                ctx.fillText(
+                  text,
+                  x,
+                  y -
+                    verticalOffset
+                );
 
                 ctx.restore();
-              });
-            });
-          },
-        },
-      ],
-    });
-  });
+              }
+            );
+          }
+        );
+      },
+    },
+  ],
+});
 
-  useEffect(() => {
-    return () => inst.current?.destroy();
-  }, []);
 
-  return <canvas ref={ref} />;
+});
+
+useEffect(() => {
+return () => {
+chartInstance.current?.destroy();
+};
+}, []);
+
+return <canvas ref={canvasRef} />;
 };
 
-/* ───────────────── COMPONENTE ───────────────── */
-const PixelForgeProductivitySection = () => {
-  return (
-    <section className="relative h-screen flex items-center overflow-hidden">
-      <SectionBackground />
+const PixelForgeProductivitySection =
+() => {
+const referenceVolume =
+SUPPLIER_VOLUMES[
+SUPPLIER_VOLUMES.length - 1
+];
 
-      <div className="relative z-10 w-full container mx-auto px-6 py-8 space-y-5">
-        {/* HEADER */}
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">
-            Produtividade do time com{" "}
-            <span className="text-gradient-forge">Pixel Forge</span>
-          </h2>
 
-          <p className="text-sm text-muted-foreground mt-1">
-            Produção manual durante o dia + apoio automatizado fora do expediente
+const individualManualReference =
+  referenceVolume /
+  INDIVIDUAL_DAILY_CAPACITY;
+
+const individualAssistedReference =
+  referenceVolume /
+  INDIVIDUAL_ASSISTED_CAPACITY;
+
+const teamManualReference =
+  referenceVolume /
+  TEAM_DAILY_CAPACITY;
+
+const teamAssistedReference =
+  referenceVolume /
+  ASSISTED_OPERATION_CAPACITY;
+
+return (
+  <section className="relative h-screen flex items-center overflow-hidden">
+    <SectionBackground />
+
+    <div className="relative z-10 w-full container mx-auto px-6 py-6 space-y-4">
+      <div>
+        <h2 className="text-3xl font-bold text-foreground">
+          Capacidade potencializada com{" "}
+          <span className="text-gradient-forge">
+            Pixel Forge
+          </span>
+        </h2>
+
+        <p className="text-sm text-muted-foreground mt-1">
+          A automação amplia a
+          capacidade operacional sem
+          exigir mais velocidade dos
+          analistas.
+        </p>
+
+        <p className="text-xs text-muted-foreground mt-2">
+          Mais imagens processadas,
+          menos horas repetitivas e
+          maior velocidade para o
+          go-live.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {kpis.map((kpi) => (
+          <div
+            key={kpi.label}
+            className="rounded-2xl border bg-card/60 backdrop-blur-sm p-4 flex flex-col gap-1"
+          >
+            <div className="flex items-center gap-2">
+              <kpi.icon
+                size={14}
+                style={{
+                  color: PURPLE,
+                }}
+              />
+
+              <p className="text-xs text-muted-foreground uppercase">
+                {kpi.label}
+              </p>
+            </div>
+
+            <div className="flex items-baseline gap-1.5">
+              <p className="text-2xl font-semibold">
+                {kpi.value}
+              </p>
+
+              <span className="text-xs text-muted-foreground">
+                {kpi.unit}
+              </span>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              {kpi.sub}
+            </p>
+
+            <p
+              className="text-[11px] font-semibold mt-0.5"
+              style={{
+                color: GREEN,
+              }}
+            >
+              {kpi.gain}
+            </p>
+
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 w-fit mt-1">
+              {kpi.badge}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-2xl border bg-card/60 p-4">
+        <div className="mb-3">
+          <p className="text-sm font-semibold">
+            Como o Pixel Forge
+            potencializa a capacidade
+          </p>
+
+          <p className="text-xs text-muted-foreground mt-1">
+            Comparação individual e
+            coletiva entre o esforço
+            manual e a operação
+            apoiada pela automação.
           </p>
         </div>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {kpis.map((k) => (
-            <div
-              key={k.label}
-              className="rounded-2xl border bg-card/60 backdrop-blur-sm p-4 flex flex-col gap-1"
-            >
-              <div className="flex items-center gap-2">
-                <k.icon size={14} style={{ color: PURPLE }} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="rounded-xl border bg-background/30 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">
+                  Potencial individual
+                </p>
 
-                <p className="text-xs text-muted-foreground uppercase">
-                  {k.label}
+                <p className="text-xs text-muted-foreground mt-1">
+                  1 analista com apoio
+                  de 1 máquina
                 </p>
               </div>
 
-              <p className="text-2xl font-semibold">{k.value}</p>
-
-              <p className="text-xs text-muted-foreground">{k.sub}</p>
-
-              {/* 🔥 Percentual de ganho */}
-              <p
-                className="text-[11px] font-semibold mt-0.5"
-                style={{ color: GREEN }}
-              >
-                {k.gain}
-              </p>
-
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 w-fit mt-1">
-                {k.badge}
+              <span className="rounded-full bg-green-100 px-2 py-1 text-[10px] font-medium text-green-700">
+                {formatNumber(
+                  INDIVIDUAL_DAILY_CAPACITY
+                )}{" "}
+                →{" "}
+                {formatNumber(
+                  INDIVIDUAL_ASSISTED_CAPACITY
+                )}{" "}
+                imagens
               </span>
             </div>
-          ))}
-        </div>
 
-        {/* GRÁFICO */}
-        <div className="rounded-2xl border bg-card/60 p-4">
-          <p className="text-sm font-semibold">
-            Cobertura por volume de fornecedor
-          </p>
+            <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground mt-2">
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 rounded-sm"
+                  style={{
+                    background: RED,
+                  }}
+                />
 
-          <div className="flex gap-4 text-xs text-muted-foreground mb-2">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 bg-red-500 rounded-sm" />
-              Manual
-            </span>
+                Manual
+              </span>
 
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2" style={{ background: GREEN }} />
-              Manual + IA
-            </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 rounded-sm"
+                  style={{
+                    background:
+                      GREEN,
+                  }}
+                />
+
+                Com Pixel Forge
+              </span>
+            </div>
+
+            <div className="h-[190px] mt-1">
+              <CapacityComparisonChart
+                manualCapacity={
+                  INDIVIDUAL_DAILY_CAPACITY
+                }
+                assistedCapacity={
+                  INDIVIDUAL_ASSISTED_CAPACITY
+                }
+                mode="individual"
+              />
+            </div>
+
+            <div className="mt-2 rounded-lg border border-primary/15 bg-primary/5 px-3 py-2">
+              <p className="text-xs text-foreground">
+                Para{" "}
+                <strong>
+                  {formatNumber(
+                    referenceVolume
+                  )}{" "}
+                  imagens
+                </strong>
+                :{" "}
+                <strong>
+                  {formatNumber(
+                    individualManualReference,
+                    1
+                  )} dias
+                </strong>{" "}
+                no manual e{" "}
+                <strong>
+                  {formatNumber(
+                    individualAssistedReference,
+                    1
+                  )} ciclos
+                </strong>{" "}
+                com o Pixel Forge.
+              </p>
+            </div>
           </div>
 
-          <div style={{ height: 260 }}>
-            <CoverageCompareChart />
+          <div className="rounded-xl border bg-background/30 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">
+                  Potencial da equipe
+                </p>
+
+                <p className="text-xs text-muted-foreground mt-1">
+                  {TEAM_SIZE} analistas
+                  com apoio de{" "}
+                  {TEAM_SIZE} máquinas
+                </p>
+              </div>
+
+              <span className="rounded-full bg-green-100 px-2 py-1 text-[10px] font-medium text-green-700">
+                {formatNumber(
+                  TEAM_DAILY_CAPACITY
+                )}{" "}
+                →{" "}
+                {formatNumber(
+                  ASSISTED_OPERATION_CAPACITY
+                )}{" "}
+                imagens
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground mt-2">
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 rounded-sm"
+                  style={{
+                    background: RED,
+                  }}
+                />
+
+                Equipe manual
+              </span>
+
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 rounded-sm"
+                  style={{
+                    background:
+                      GREEN,
+                  }}
+                />
+
+                Equipe + Pixel Forge
+              </span>
+            </div>
+
+            <div className="h-[190px] mt-1">
+              <CapacityComparisonChart
+                manualCapacity={
+                  TEAM_DAILY_CAPACITY
+                }
+                assistedCapacity={
+                  ASSISTED_OPERATION_CAPACITY
+                }
+                mode="team"
+              />
+            </div>
+
+            <div className="mt-2 rounded-lg border border-primary/15 bg-primary/5 px-3 py-2">
+              <p className="text-xs text-foreground">
+                Para{" "}
+                <strong>
+                  {formatNumber(
+                    referenceVolume
+                  )}{" "}
+                  imagens
+                </strong>
+                :{" "}
+                <strong>
+                  {formatNumber(
+                    teamManualReference,
+                    1
+                  )} dias
+                </strong>{" "}
+                no manual e{" "}
+                <strong>
+                  {formatNumber(
+                    teamAssistedReference,
+                    1
+                  )} ciclos
+                </strong>{" "}
+                com o Pixel Forge.
+              </p>
+            </div>
           </div>
         </div>
       </div>
-    </section>
-  );
+    </div>
+  </section>
+);
+
+
 };
 
 export default PixelForgeProductivitySection;

@@ -5,7 +5,7 @@ import SectionBackground from "@/components/ui/SectionBackground";
 const layers = [
   {
     id: "frontend",
-    label: "Frontend",
+    label: "Interface / Frontend",
     color: "#378ADD",
     glow: "rgba(55,138,221,0.18)",
     border: "rgba(55,138,221,0.35)",
@@ -13,71 +13,65 @@ const layers = [
       {
         name: "React",
         icon: "⚛️",
-        desc: "UI declarativa com componentes reutilizáveis",
-        badge: "v18",
+        desc: "Constrói as telas e os componentes usados pelo usuário.",
+        badge: "interface",
+      },
+      {
+        name: "TypeScript",
+        icon: "🔷",
+        desc: "Adiciona segurança ao código, reduzindo erros e facilitando a manutenção.",
+        badge: "tipagem",
       },
       {
         name: "Vite",
         icon: "⚡",
-        desc: "Build ultrarrápido com HMR nativo",
-        badge: "v5",
+        desc: "Organiza e prepara a aplicação para uma execução rápida.",
+        badge: "build",
       },
       {
         name: "Chart.js",
         icon: "📊",
-        desc: "Renderização de gráficos interativos e responsivos no frontend",
-        badge: "v4",
-      },
-      {
-        name: "systeminformation",
-        icon: "🖥️",
-        desc: "Coleta dados de hardware local em tempo real",
-        badge: "js",
+        desc: "Apresenta métricas e comparativos de produtividade de forma visual.",
+        badge: "gráficos",
       },
     ],
   },
   {
     id: "backend",
-    label: "Backend",
+    label: "Backend e orquestração",
     color: "#1D9E75",
     glow: "rgba(29,158,117,0.18)",
     border: "rgba(29,158,117,0.35)",
     items: [
       {
-        name: "Flask",
-        icon: "🌶️",
-        desc: "API REST leve para orquestrar os pipelines de IA",
-        badge: "Python",
+        name: "Node.js + Express",
+        icon: "🟢",
+        desc: "Recebe as solicitações e coordena todo o fluxo de processamento.",
+        badge: "API local",
       },
       {
-        name: "Pandas",
-        icon: "🐼",
-        desc: "Manipulação e análise de metadados das imagens",
-        badge: "Python",
+        name: "WebSocket",
+        icon: "🔄",
+        desc: "Envia progresso, logs e conclusão das tarefas em tempo real.",
+        badge: "tempo real",
       },
       {
-        name: "PyTorch",
-        icon: "🔥",
-        desc: "Runtime para inferência dos modelos de IA",
-        badge: "Python",
+        name: "Multer + Sharp",
+        icon: "🗂️",
+        desc: "Recebem, organizam, convertem e preparam os arquivos de imagem.",
+        badge: "arquivos",
       },
       {
-        name: "OpenCV",
-        icon: "👁️",
-        desc: "Pré e pós-processamento de imagens em pipeline",
-        badge: "Python",
-      },
-      {
-        name: "Pillow",
-        icon: "🖼️",
-        desc: "Manipulação de arquivos de imagem e conversão",
-        badge: "Python",
+        name: "systeminformation",
+        icon: "🖥️",
+        desc: "Monitora informações da máquina, como memória, processador e armazenamento.",
+        badge: "hardware",
       },
     ],
   },
   {
     id: "ia",
-    label: "IA Open Source",
+    label: "IA e processamento",
     color: "#7F77DD",
     glow: "rgba(127,119,221,0.18)",
     border: "rgba(127,119,221,0.35)",
@@ -85,14 +79,26 @@ const layers = [
       {
         name: "Real-ESRGAN",
         icon: "🔬",
-        desc: "Upscaling 4× com recuperação de texturas e nitidez",
-        badge: "open source",
+        desc: "Aumenta a resolução das imagens em até 4×, recuperando nitidez e detalhes.",
+        badge: "upscaling",
       },
       {
-        name: "Image Artisan",
-        icon: "✨",
-        desc: "Remoção de fundo e enhancement automático",
-        badge: "open source",
+        name: "InSPyReNet",
+        icon: "✂️",
+        desc: "Identifica o produto e remove automaticamente o fundo da imagem.",
+        badge: "recorte",
+      },
+      {
+        name: "Python + PyTorch",
+        icon: "🐍",
+        desc: "Executam o modelo responsável pelo processamento inteligente das imagens.",
+        badge: "runtime IA",
+      },
+      {
+        name: "Kornia",
+        icon: "👁️",
+        desc: "Apoia operações de visão computacional durante o tratamento das imagens.",
+        badge: "visão",
       },
     ],
   },
@@ -117,11 +123,15 @@ const TechStackSection = () => {
           className="text-center"
         >
           <h2 className="text-3xl font-bold sm:text-4xl lg:text-5xl">
-            Stack do <span className="text-gradient-forge">projeto</span>
+            Tecnologias por trás do <span className="text-gradient-forge">Pixel Forge</span>
           </h2>
-          <p className="mt-3 text-base text-muted-foreground max-w-xl mx-auto">
-            Tecnologias escolhidas para rodar localmente, sem dependência de APIs externas
-            e com custo zero de infraestrutura.
+          <p className="mt-3 text-base text-muted-foreground max-w-2xl mx-auto">
+            Uma arquitetura local que conecta interface, backend e modelos
+            de inteligência artificial em um único fluxo de processamento.
+          </p>
+
+          <p className="mt-1 text-xs text-muted-foreground max-w-2xl mx-auto">
+            Sem cobrança por imagem e sem envio dos arquivos para serviços externos.
           </p>
         </motion.div>
 
@@ -154,12 +164,7 @@ const TechStackSection = () => {
               </div>
 
               {/* Cards da camada */}
-              <div
-                className="grid gap-3"
-                style={{
-                  gridTemplateColumns: `repeat(${layer.items.length}, minmax(0, 1fr))`,
-                }}
-              >
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {layer.items.map((tech, ti) => (
                   <motion.div
                     key={tech.name}
@@ -214,16 +219,38 @@ const TechStackSection = () => {
           className="flex flex-wrap items-center justify-center gap-6 pt-2"
         >
           {[
-            { label: "100% local", desc: "sem cloud, sem API paga" },
-            { label: "Open source", desc: "modelos de IA gratuitos" },
-            { label: "Cross-platform", desc: "Windows · Linux · Mac" },
-          ].map((item) => (
-            <div key={item.label} className="flex items-center gap-2 text-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
-              <span className="font-medium text-foreground">{item.label}</span>
-              <span className="text-muted-foreground">— {item.desc}</span>
-            </div>
-          ))}
+              {
+                label: "Processamento local",
+                desc: "as imagens permanecem na máquina",
+              },
+              {
+                label: "Sem API paga",
+                desc: "nenhuma cobrança por imagem processada",
+              },
+              {
+                label: "Open source",
+                desc: "motores de IA gratuitos e evolutivos",
+              },
+              {
+                label: "Ambiente atual",
+                desc: "Windows com aceleração Vulkan",
+              },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="flex items-center gap-2 text-sm"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
+
+                <span className="font-medium text-foreground">
+                  {item.label}
+                </span>
+
+                <span className="text-muted-foreground">
+                  — {item.desc}
+                </span>
+              </div>
+            ))}
         </motion.div>
 
       </div>

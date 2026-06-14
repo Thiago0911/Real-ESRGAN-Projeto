@@ -1,56 +1,95 @@
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
-import { Cpu, Clock, ImageIcon, Server } from "lucide-react";
+import {
+  Cpu,
+  Clock,
+  ImageIcon,
+  Server,
+} from "lucide-react";
 import SectionBackground from "@/components/ui/SectionBackground";
 
-/* ───────────────── CONFIG ───────────────── */
-const MACHINES = 4;
-const IMAGES_PER_MACHINE = 500;
-const BATCH_HOURS = 13.5;
+const MACHINE_COUNT = 4;
+const IMAGES_PER_MACHINE_PER_CYCLE = 500;
 
-const pixelForgeDaily = MACHINES * IMAGES_PER_MACHINE;
-const pixelForgeHourly = Math.round(pixelForgeDaily / BATCH_HOURS);
+const BATCH_DURATION_HOURS = 13.5;
+const BATCH_DURATION_LABEL = "13h30";
 
-const hours = [
-  "17h30","18h","19h","20h","21h","22h","23h",
-  "00h","01h","02h","03h","04h","05h","06h","07h"
+const BATCH_START = "17h30";
+const BATCH_END = "07h00";
+
+const STANDARD_MACHINE = "Intel Core i5 · 8 GB RAM";
+
+const TOTAL_IMAGES_PER_CYCLE =
+  MACHINE_COUNT * IMAGES_PER_MACHINE_PER_CYCLE;
+
+const MACHINE_THROUGHPUT_PER_HOUR =
+  IMAGES_PER_MACHINE_PER_CYCLE /
+  BATCH_DURATION_HOURS;
+
+const TOTAL_THROUGHPUT_PER_HOUR =
+  TOTAL_IMAGES_PER_CYCLE /
+  BATCH_DURATION_HOURS;
+
+const TIMELINE = [
+  { label: "17h30", elapsedHours: 0 },
+  { label: "18h", elapsedHours: 0.5 },
+  { label: "19h", elapsedHours: 1.5 },
+  { label: "20h", elapsedHours: 2.5 },
+  { label: "21h", elapsedHours: 3.5 },
+  { label: "22h", elapsedHours: 4.5 },
+  { label: "23h", elapsedHours: 5.5 },
+  { label: "00h", elapsedHours: 6.5 },
+  { label: "01h", elapsedHours: 7.5 },
+  { label: "02h", elapsedHours: 8.5 },
+  { label: "03h", elapsedHours: 9.5 },
+  { label: "04h", elapsedHours: 10.5 },
+  { label: "05h", elapsedHours: 11.5 },
+  { label: "06h", elapsedHours: 12.5 },
+  { label: "07h", elapsedHours: 13.5 },
 ];
 
 const PURPLE = "#7F77DD";
 
 const kpis = [
-  {
-    icon: Cpu,
-    label: "Máquinas",
-    value: `${MACHINES}`,
-    sub: "Intel i5 · 8GB RAM",
-    badge: "Infraestrutura",
-  },
-  {
-    icon: ImageIcon,
-    label: "Imagens / máquina",
-    value: `${IMAGES_PER_MACHINE}`,
-    sub: "Processadas por ciclo",
-    badge: "Capacidade",
-  },
-  {
-    icon: Clock,
-    label: "Tempo de execução",
-    value: `${BATCH_HOURS}h`,
-    sub: "17h30 → 07h00",
-    badge: "Overnight",
-  },
-  {
-    icon: Server,
-    label: "Imagens / hora",
-    value: pixelForgeHourly.toLocaleString("pt-BR"),
-    sub: "Média durante execução",
-    badge: "Throughput",
-  },
+{
+icon: Cpu,
+label: "Infraestrutura utilizada",
+value: String(MACHINE_COUNT),
+unit: "máquinas",
+sub: STANDARD_MACHINE,
+badge: "Configuração padrão",
+},
+{
+icon: ImageIcon,
+label: "Capacidade por ciclo",
+value: TOTAL_IMAGES_PER_CYCLE.toLocaleString("pt-BR"),
+unit: "imagens",
+sub: `${IMAGES_PER_MACHINE_PER_CYCLE} por máquina`,
+badge: "Processamento paralelo",
+},
+{
+icon: Clock,
+label: "Janela aproveitada",
+value: BATCH_DURATION_LABEL,
+unit: "de execução",
+sub: `${BATCH_START} → ${BATCH_END}`,
+badge: "Fora do expediente",
+},
+{
+icon: Server,
+label: "Vazão combinada",
+value: Math.round(TOTAL_THROUGHPUT_PER_HOUR).toLocaleString("pt-BR"),
+unit: "imagens/hora",
+sub: `Cerca de ${Math.round(
+      MACHINE_THROUGHPUT_PER_HOUR
+    )} imagens/hora por máquina`,
+badge: "Capacidade média",
+},
 ];
 
-/* ───────────────── HOOK VIEW ───────────────── */
-function useInView(ref: any, margin = "-100px") {
+function useInView(
+  ref: React.RefObject<HTMLElement>,
+  margin = "-100px"
+) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -63,236 +102,545 @@ function useInView(ref: any, margin = "-100px") {
           observer.disconnect();
         }
       },
-      { rootMargin: margin }
+      {
+        rootMargin: margin,
+      }
     );
 
     observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [ref, margin]);
 
   return visible;
 }
 
-/* ───────────────── CHART LOADER ───────────────── */
-function useChartJs(cb: () => void) {
-  useEffect(() => {
-    if ((window as any).Chart) return cb();
-    const s = document.createElement("script");
-    s.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
-    s.onload = cb;
-    document.head.appendChild(s);
-  }, [cb]);
+let chartJsPromise: Promise<void> | null = null;
+
+function loadChartJs() {
+  if ((window as any).Chart) {
+    return Promise.resolve();
+  }
+
+  if (chartJsPromise) {
+    return chartJsPromise;
+  }
+
+  chartJsPromise = new Promise(
+    (resolve, reject) => {
+      const existingScript =
+        document.querySelector<HTMLScriptElement>(
+          'script[data-chartjs="true"]'
+        );
+
+      if (existingScript) {
+        existingScript.addEventListener(
+          "load",
+          () => resolve(),
+          { once: true }
+        );
+
+        existingScript.addEventListener(
+          "error",
+          () =>
+            reject(
+              new Error(
+                "Não foi possível carregar o Chart.js."
+              )
+            ),
+          { once: true }
+        );
+
+        return;
+      }
+
+      const script =
+        document.createElement("script");
+
+      script.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
+
+      script.dataset.chartjs = "true";
+      script.async = true;
+
+      script.onload = () => resolve();
+
+      script.onerror = () =>
+        reject(
+          new Error(
+            "Não foi possível carregar o Chart.js."
+          )
+        );
+
+      document.head.appendChild(script);
+    }
+  );
+
+  return chartJsPromise;
 }
 
-function theme() {
-  const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+function getTheme() {
+  const dark = window.matchMedia(
+    "(prefers-color-scheme: dark)"
+  ).matches;
+
   return {
-    grid: dark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)",
-    tick: dark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.38)",
+    grid: dark
+      ? "rgba(255,255,255,0.07)"
+      : "rgba(0,0,0,0.06)",
+
+    tick: dark
+      ? "rgba(255,255,255,0.38)"
+      : "rgba(0,0,0,0.38)",
   };
 }
 
-/* ───────────────── CHART ───────────────── */
 const OvernightChart = () => {
-  const canvasRef = useRef(null);
-  const containerRef = useRef(null);
+  const canvasRef =
+    useRef<HTMLCanvasElement>(null);
+
+  const containerRef =
+    useRef<HTMLDivElement>(null);
+
   const chartRef = useRef<any>(null);
 
-  const isVisible = useInView(containerRef);
+  const isVisible = useInView(
+    containerRef as React.RefObject<HTMLElement>
+  );
 
-  useChartJs(() => {
-    if (!canvasRef.current || !isVisible) return;
+  useEffect(() => {
+    if (!isVisible || !canvasRef.current) {
+      return;
+    }
 
-    chartRef.current?.destroy();
+    let cancelled = false;
 
-    const { grid, tick } = theme();
+    loadChartJs()
+      .then(() => {
+        if (
+          cancelled ||
+          !canvasRef.current
+        ) {
+          return;
+        }
 
-    const data = hours.map((_, i) =>
-      Math.min(
-        Math.round((pixelForgeDaily / (hours.length - 1)) * i),
-        pixelForgeDaily
-      )
-    );
+        chartRef.current?.destroy();
 
-    chartRef.current = new (window as any).Chart(canvasRef.current, {
-      type: "line",
-      data: {
-        labels: hours,
-        datasets: [
-          {
-            data,
-            borderColor: PURPLE,
-            backgroundColor: "rgba(127,119,221,0.10)",
-            pointBackgroundColor: PURPLE,
-            pointRadius: 5,
-            pointHoverRadius: 7,
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3,
+        const { grid, tick } =
+          getTheme();
+
+        const productionData =
+          TIMELINE.map(
+            ({ elapsedHours }) =>
+              Math.min(
+                Math.round(
+                  TOTAL_THROUGHPUT_PER_HOUR *
+                    elapsedHours
+                ),
+                TOTAL_IMAGES_PER_CYCLE
+              )
+          );
+
+        chartRef.current = new (
+          window as any
+        ).Chart(canvasRef.current, {
+          type: "line",
+
+          data: {
+            labels: TIMELINE.map(
+              ({ label }) => label
+            ),
+
+            datasets: [
+              {
+                label:
+                  "Produção acumulada",
+
+                data: productionData,
+
+                borderColor: PURPLE,
+
+                backgroundColor:
+                  "rgba(127,119,221,0.10)",
+
+                pointBackgroundColor:
+                  PURPLE,
+
+                pointBorderColor:
+                  PURPLE,
+
+                pointRadius: 4,
+
+                pointHoverRadius: 7,
+
+                borderWidth: 2,
+
+                fill: true,
+
+                tension: 0.3,
+              },
+            ],
           },
-        ],
-      },
 
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
+          options: {
+            responsive: true,
 
-        animation: {
-          duration: 1200,
-          easing: "easeOutQuart",
-        },
+            maintainAspectRatio: false,
 
-        layout: {
-          padding: { top: 24, bottom: 30 },
-        },
+            animation: {
+              duration: 1200,
 
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (c: any) =>
-                ` ${c.parsed.y.toLocaleString("pt-BR")} imagens`,
+              easing: "easeOutQuart",
+            },
+
+            layout: {
+              padding: {
+                top: 24,
+                bottom: 20,
+                left: 5,
+                right: 5,
+              },
+            },
+
+            interaction: {
+              mode: "index",
+              intersect: false,
+            },
+
+            plugins: {
+              legend: {
+                display: false,
+              },
+
+              tooltip: {
+                callbacks: {
+                  title: (
+                    items: any[]
+                  ) =>
+                    `Horário: ${items[0].label}`,
+
+                  label: (
+                    context: any
+                  ) =>
+                    ` ${context.parsed.y.toLocaleString(
+                      "pt-BR"
+                    )} imagens`,
+                },
+              },
+            },
+
+            scales: {
+              x: {
+                grid: {
+                  color: grid,
+                },
+
+                ticks: {
+                  color: "#6B7280",
+                  autoSkip: false,
+                  padding: 10,
+
+                  font: {
+                    size: 10,
+                  },
+                },
+
+                title: {
+                  display: true,
+                  text: "Horário da execução",
+                  color: tick,
+
+                  font: {
+                    size: 10,
+                  },
+                },
+              },
+
+              y: {
+                beginAtZero: true,
+
+                suggestedMax:
+                  TOTAL_IMAGES_PER_CYCLE,
+
+                grid: {
+                  color: grid,
+                },
+
+                ticks: {
+                  color: tick,
+
+                  callback: (
+                    value:
+                      | number
+                      | string
+                  ) => {
+                    const numericValue =
+                      Number(value);
+
+                    if (
+                      numericValue >= 1000
+                    ) {
+                      return `${(
+                        numericValue / 1000
+                      )
+                        .toFixed(1)
+                        .replace(
+                          ".0",
+                          ""
+                        )}k`;
+                    }
+
+                    return numericValue;
+                  },
+                },
+
+                title: {
+                  display: true,
+                  text: "Imagens processadas",
+                  color: tick,
+
+                  font: {
+                    size: 10,
+                  },
+                },
+              },
             },
           },
-        },
 
-        scales: {
-          x: {
-            grid: { color: grid },
-            ticks: {
-              color: "#6B7280",
-              autoSkip: false,
-              padding: 12,
+          plugins: [
+            {
+              id: "pointLabels",
+
+              afterDatasetsDraw(
+                chart: any
+              ) {
+                const { ctx } = chart;
+
+                const meta =
+                  chart.getDatasetMeta(0);
+
+                const values =
+                  chart.data.datasets[0]
+                    .data as number[];
+
+                meta.data.forEach(
+                  (
+                    point: any,
+                    index: number
+                  ) => {
+                    const isLastPoint =
+                      index ===
+                      meta.data.length -
+                        1;
+
+                    const shouldShow =
+                      index % 2 === 0 ||
+                      isLastPoint;
+
+                    if (!shouldShow) {
+                      return;
+                    }
+
+                    const value =
+                      values[index];
+
+                    const x = point.x;
+                    const y = point.y;
+
+                    ctx.save();
+
+                    ctx.font =
+                      "bold 10px sans-serif";
+
+                    ctx.textAlign =
+                      "center";
+
+                    ctx.textBaseline =
+                      "bottom";
+
+                    const text =
+                      value >= 1000
+                        ? `${(
+                            value / 1000
+                          ).toFixed(1)}k`
+                        : value.toString();
+
+                    const metrics =
+                      ctx.measureText(text);
+
+                    const pillWidth =
+                      metrics.width + 8;
+
+                    const pillHeight =
+                      14;
+
+                    const pillX =
+                      x -
+                      pillWidth / 2;
+
+                    const pillY =
+                      y -
+                      10 -
+                      pillHeight;
+
+                    ctx.fillStyle =
+                      "rgba(127,119,221,0.15)";
+
+                    ctx.beginPath();
+
+                    ctx.roundRect(
+                      pillX,
+                      pillY,
+                      pillWidth,
+                      pillHeight,
+                      4
+                    );
+
+                    ctx.fill();
+
+                    ctx.fillStyle =
+                      PURPLE;
+
+                    ctx.fillText(
+                      text,
+                      x,
+                      y - 10
+                    );
+
+                    ctx.restore();
+                  }
+                );
+              },
             },
-          },
-          y: {
-            grid: { color: grid },
-            ticks: {
-              color: tick,
-              callback: (v: number) =>
-                v >= 1000 ? (v / 1000).toFixed(1) + "k" : v,
-            },
-            beginAtZero: true,
-          },
-        },
-      },
+          ],
+        });
+      })
+      .catch((error) => {
+        console.error(
+          "Erro ao carregar gráfico:",
+          error
+        );
+      });
 
-      plugins: [
-        {
-          id: "pointLabels",
-          afterDatasetsDraw(chart: any) {
-            const { ctx } = chart;
-            const meta = chart.getDatasetMeta(0);
-            const values = chart.data.datasets[0].data;
+    return () => {
+      cancelled = true;
 
-            // 🔥 pega progresso da animação
-            const progress =
-              chart.animator?.currentStep / chart.animator?.numSteps || 1;
+      chartRef.current?.destroy();
 
-            meta.data.forEach((point: any, i: number) => {
-              const finalValue = values[i];
-              const animatedValue = Math.round(finalValue * progress);
-
-              const x = point.x;
-              const y = point.y;
-
-              ctx.save();
-              ctx.font = "bold 10px sans-serif";
-              ctx.textAlign = "center";
-              ctx.textBaseline = "bottom";
-
-              const text =
-                animatedValue >= 1000
-                  ? (animatedValue / 1000).toFixed(1) + "k"
-                  : animatedValue.toString();
-
-              const metrics = ctx.measureText(text);
-              const pw = metrics.width + 8;
-              const ph = 14;
-
-              const px = x - pw / 2;
-              const py = y - 10 - ph;
-
-              // fundo igual ao gráfico manual
-              ctx.fillStyle = "rgba(127,119,221,0.15)";
-              ctx.beginPath();
-              ctx.roundRect(px, py, pw, ph, 4);
-              ctx.fill();
-
-              ctx.fillStyle = PURPLE;
-              ctx.fillText(text, x, y - 10);
-
-              ctx.restore();
-            });
-          },
-        },
-      ],
-    });
-  });
-
-  useEffect(() => () => chartRef.current?.destroy(), []);
+      chartRef.current = null;
+    };
+  }, [isVisible]);
 
   return (
-    <div ref={containerRef} style={{ height: 220 }}>
+    <div
+      ref={containerRef}
+      className="h-[220px]"
+    >
       <canvas ref={canvasRef} />
     </div>
   );
 };
 
-/* ───────────────── COMPONENTE ───────────────── */
 const MetricsSection = () => {
   return (
     <section className="relative h-screen flex items-center overflow-hidden">
       <SectionBackground />
 
       <div className="relative z-10 w-full container mx-auto px-6 py-8 space-y-5">
-
-        {/* HEADER */}
         <div>
           <h2 className="text-3xl font-bold text-foreground">
-            Produção com <span className="text-gradient-forge">Pixel Forge</span>
+            Capacidade noturna com{" "}
+            <span className="text-gradient-forge">
+              Pixel Forge
+            </span>
           </h2>
+
           <p className="text-sm text-muted-foreground mt-1">
-            Execução automatizada durante a noite (17h30 → 07h00)
+            Quatro máquinas padrão
+            processando imagens em paralelo
+            fora do horário de trabalho.
+          </p>
+
+          <p className="text-xs text-muted-foreground mt-2">
+            Janela analisada:{" "}
+            {BATCH_START} até {BATCH_END} ·
+            sem consumir horas produtivas
+            dos analistas
           </p>
         </div>
 
-        {/* KPIs */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {kpis.map((k) => (
+          {kpis.map((kpi) => (
             <div
-              key={k.label}
+              key={kpi.label}
               className="rounded-2xl border bg-card/60 backdrop-blur-sm p-4 flex flex-col gap-1"
             >
               <div className="flex items-center gap-2">
-                <k.icon size={14} style={{ color: PURPLE }} />
+                <kpi.icon
+                  size={14}
+                  style={{
+                    color: PURPLE,
+                  }}
+                />
+
                 <p className="text-xs text-muted-foreground uppercase">
-                  {k.label}
+                  {kpi.label}
                 </p>
               </div>
 
-              <p className="text-2xl font-semibold">{k.value}</p>
-              <p className="text-xs text-muted-foreground">{k.sub}</p>
+              <div className="flex items-baseline gap-1.5">
+                <p className="text-2xl font-semibold">
+                  {kpi.value}
+                </p>
+
+                <span className="text-xs text-muted-foreground">
+                  {kpi.unit}
+                </span>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                {kpi.sub}
+              </p>
 
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 w-fit">
-                {k.badge}
+                {kpi.badge}
               </span>
             </div>
           ))}
         </div>
 
-        {/* GRÁFICO */}
         <div className="rounded-2xl border bg-card/60 p-5">
           <p className="text-sm font-semibold">
-            Produção acumulada por horário
+            Produção acumulada durante o
+            ciclo noturno
           </p>
+
           <p className="text-xs text-muted-foreground mb-3">
-            Crescimento ao longo da execução
+            Projeção de {MACHINE_COUNT}{" "}
+            máquinas operando
+            simultaneamente até o início
+            do expediente.
           </p>
 
           <OvernightChart />
-        </div>
 
+          <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+            <p className="text-sm text-foreground">
+              Ao início do expediente, até{" "}
+              <strong>
+                {TOTAL_IMAGES_PER_CYCLE.toLocaleString(
+                  "pt-BR"
+                )}{" "}
+                imagens
+              </strong>{" "}
+              podem estar processadas sem
+              consumir o tempo operacional
+              dos analistas.
+            </p>
+          </div>
+        </div>
       </div>
     </section>
   );

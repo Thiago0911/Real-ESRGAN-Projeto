@@ -34,7 +34,7 @@ const StepCard = ({ step, badge, badgeColor, title, desc, delay, iaBadge }) => {
       <p className="text-[10px] text-muted-foreground leading-relaxed">{desc}</p>
       {iaBadge && (
         <span className="self-start mt-0.5 text-[9px] font-medium px-2 py-0.5 rounded-full border text-[#7F77DD] border-[rgba(127,119,221,0.35)] bg-[rgba(127,119,221,0.1)]">
-          IA: Real-ESRGAN · Image Artisan
+          Motores: Real-ESRGAN · InSPyReNet
         </span>
       )}
     </motion.div>
@@ -42,12 +42,12 @@ const StepCard = ({ step, badge, badgeColor, title, desc, delay, iaBadge }) => {
 };
 
 const steps = [
-  { step: 1, badge: "Usuário",       badgeColor: "blue",  title: "Seleção de imagens",        desc: "Escolhe arquivos de pastas diferentes",           delay: 0    },
-  { step: 2, badge: "Sistema",       badgeColor: "blue",  title: "Transferência para /input", desc: "Imagens copiadas para o diretório de entrada",    delay: 0.08 },
-  { step: 3, badge: "Processamento", badgeColor: "green", title: "Fila de processamento",     desc: "Sistema ordena e enfileira as imagens",           delay: 0.16, iaBadge: true },
-  { step: 4, badge: "Processamento", badgeColor: "green", title: "Imagens tratadas → /output",desc: "Resultados exportados para a pasta de saída",     delay: 0.24 },
-  { step: 5, badge: "Usuário",       badgeColor: "blue",  title: "Comparação de resultado",   desc: "Modal antes × depois das imagens tratadas",       delay: 0.32 },
-  { step: 6, badge: "Usuário",       badgeColor: "blue",  title: "Abertura da pasta de saída",desc: "Abre /output direto pelo modal de comparação",    delay: 0.40 },
+  { step: 1, badge: "Interface",     badgeColor: "blue",  title: "Seleção de imagens",     desc: "O usuário escolhe uma ou várias imagens, inclusive de pastas diferentes.",       delay: 0    },
+  { step: 2, badge: "Sistema",       badgeColor: "blue",  title: "Recebimento e preparação", desc: "O backend recebe os arquivos e organiza o diretório de entrada da execução.",    delay: 0.08 },
+  { step: 3, badge: "Orquestração",  badgeColor: "green", title: "Criação da fila de tarefas", desc: "Cada imagem recebe um identificador e entra na fila de processamento.",           delay: 0.16 },
+  { step: 4, badge: "IA local",      badgeColor: "green", title: "Execução do tratamento", desc: "Os motores de IA executam o aumento de resolução ou a remoção de fundo.",     delay: 0.24, iaBadge: true },
+  { step: 5, badge: "Sistema",       badgeColor: "blue",  title: "Progresso e comparação",   desc: "A aplicação atualiza o progresso e apresenta a comparação entre original e resultado.",       delay: 0.32 },
+  { step: 6, badge: "Entrega",       badgeColor: "blue",  title: "Disponibilização dos arquivos",desc: "As imagens finais são gravadas em /output e ficam acessíveis pela aplicação.",    delay: 0.40 },
 ];
 
 // Seta horizontal longa entre os cards de cada par
@@ -127,10 +127,11 @@ const FlowSection = () => {
           className="text-center"
         >
           <h2 className="text-3xl font-bold sm:text-4xl lg:text-5xl">
-            Como o <span className="text-gradient-forge">sistema funciona</span>
+            Do upload ao resultado: <span className="text-gradient-forge">fluxo da aplicação</span>
           </h2>
           <p className="mt-3 text-base text-muted-foreground max-w-xl mx-auto">
-            Do clique do usuário ao resultado final — tudo local, sem nuvem.
+            As imagens são processadas na própria máquina,
+            sem envio para serviços externos.
           </p>
         </motion.div>
 
@@ -166,9 +167,9 @@ const FlowSection = () => {
           className="flex flex-wrap items-center justify-center gap-6 pt-2"
         >
           {[
-            { color: "bg-[rgba(55,138,221,0.5)]",  label: "Ação do usuário"          },
-            { color: "bg-[rgba(29,158,117,0.5)]",  label: "Processamento do sistema" },
-            { color: "bg-[rgba(127,119,221,0.5)]", label: "Módulo de IA"             },
+            { color: "bg-[rgba(55,138,221,0.5)]",  label: "Interface e interação"},
+            { color: "bg-[rgba(29,158,117,0.5)]",  label: "orquestração"},
+            { color: "bg-[rgba(127,119,221,0.5)]", label: "Motores de IA"},
           ].map((item) => (
             <div key={item.label} className="flex items-center gap-2 text-sm">
               <span className={`h-2 w-2 rounded-full ${item.color}`} />
