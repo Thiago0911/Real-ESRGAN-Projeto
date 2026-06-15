@@ -546,7 +546,8 @@ app.post("/api/remove-watermark", upload.single("image"), async (req, res) => {
 // ─── Remove Background: via BAT ───────────────────────────────────────────────
 app.post("/api/remove-background", upload.array("images", 50), async (req, res) => {
   const taskId = req.headers["x-task-id"];
-  const modo = req.headers["x-bg-mode"] || "transparent";
+  // Força PNG transparente para remoção de fundo
+  const modo = "transparent";
 
   if (!taskId) return res.status(400).json({ error: "taskId é obrigatório." });
   if (!req.files || req.files.length === 0) {
