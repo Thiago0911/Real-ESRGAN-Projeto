@@ -76,13 +76,13 @@ badge: "Fora do expediente",
 },
 {
 icon: Server,
-label: "Vazão combinada",
+label: "Produção média conjunta",
 value: Math.round(TOTAL_THROUGHPUT_PER_HOUR).toLocaleString("pt-BR"),
 unit: "imagens/hora",
 sub: `Cerca de ${Math.round(
       MACHINE_THROUGHPUT_PER_HOUR
     )} imagens/hora por máquina`,
-badge: "Capacidade média",
+badge: "4 máquinas em paralelo",
 },
 ];
 
@@ -549,7 +549,7 @@ const MetricsSection = () => {
       <SectionBackground />
 
       <div className="relative z-10 w-full container mx-auto px-6 py-8 space-y-5">
-        <div>
+        <div className="text-center mx-auto">
           <h2 className="text-3xl font-bold text-foreground">
             Capacidade noturna com{" "}
             <span className="text-gradient-forge">

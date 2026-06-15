@@ -64,6 +64,14 @@ const REFERENCE_EFFORT_HOURS =
 const REFERENCE_TEAM_DAYS =
   REFERENCE_VOLUME / DAILY_TEAM_CAPACITY;
 
+const TEAM_CAPACITY_IN_CRITICAL_PERIOD =
+  DAILY_TEAM_CAPACITY * CRITICAL_DAYS;
+
+const REFERENCE_CAPACITY_GAP =
+  REFERENCE_VOLUME -
+  TEAM_CAPACITY_IN_CRITICAL_PERIOD;
+
+
 const formatNumber = (
   value: number,
   maximumFractionDigits = 0
@@ -99,10 +107,10 @@ const kpis = [
   },
   {
     icon: TrendingDown,
-    label: "Prazo com toda a equipe",
-    value: formatNumber(REFERENCE_TEAM_DAYS, 1),
-    unit: "dias úteis",
-    sub: `Dedicação integral dos ${TEAM_SIZE} analistas`,
+    label: `Capacidade manual em ${CRITICAL_DAYS} dias`,
+    value: formatNumber(TEAM_CAPACITY_IN_CRITICAL_PERIOD),
+    unit: "imagens",
+    sub: `${TEAM_SIZE} analistas dedicados integralmente`,
     badge: "Impacto no go-live",
   },
 ];
@@ -413,7 +421,7 @@ const ManualProductivitySection = () => {
 
       <div className="relative z-10 w-full container mx-auto px-6 py-8 space-y-4">
         {/* HEADER */}
-        <div>
+        <div className="text-center mx-auto">
           <h2 className="text-3xl font-bold text-foreground">
             Antes da automação: o limite do
             <span className="text-gradient-forge">
