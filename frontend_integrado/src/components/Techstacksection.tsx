@@ -108,7 +108,7 @@ const TechStackSection = () => {
   return (
     <section
       id="stack"
-      className="relative h-screen flex items-center overflow-hidden"
+      className="relative min-h-screen flex items-center overflow-hidden"
     >
       <SectionBackground showOrb={true} imageOpacity={0.2} gridOpacity={0.12} />
 

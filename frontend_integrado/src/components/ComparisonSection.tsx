@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
 import {
 Check,
-X,
 Minus,
 Sparkles,
+X,
 } from "lucide-react";
 import SectionBackground from "@/components/ui/SectionBackground";
 
@@ -29,50 +29,40 @@ features: ToolFeature[];
 const tools: Tool[] = [
 {
 name: "Pixel Forge",
-tag: "Desenvolvido para a PMZ",
-price: "Sem mensalidade",
+tag: "Solução interna da PMZ",
+price: "Sem licença recorrente",
 priceDetail:
-"utiliza a infraestrutura atual",
+"Utiliza infraestrutura interna disponível",
 highlight: true,
 features: [
 {
 label:
-"Sem cobrança por imagem processada",
+"Sem cobrança por imagem ou consumo de créditos",
 status: "yes",
 },
 {
 label:
-"Aumento de resolução em 4×",
+"Aumento de resolução em até 4×",
 status: "yes",
 },
 {
 label:
-"Remoção automática de fundo",
+"Remoção de fundo e processamento em lote",
 status: "yes",
 },
 {
 label:
-"Processamento de imagens em lote",
+"Processamento local com maior privacidade",
 status: "yes",
 },
 {
 label:
-"Processamento executado localmente",
+"Fluxo adaptado à operação da PMZ",
 status: "yes",
 },
 {
 label:
-"Imagens permanecem na máquina",
-status: "yes",
-},
-{
-label:
-"Fluxo adaptado à operação PMZ",
-status: "yes",
-},
-{
-label:
-"Execução noturna automatizada",
+"Execução noturna integrada ao processo",
 status: "yes",
 },
 ],
@@ -82,12 +72,12 @@ name: "Pixlr Premium",
 tag: null,
 price: "US$ 9,99",
 priceDetail:
-"por mês · 1.000 créditos",
+"Por mês · plano sujeito a créditos",
 highlight: false,
 features: [
 {
 label:
-"Uso condicionado aos créditos do plano",
+"Uso condicionado ao plano e aos créditos",
 status: "partial",
 },
 {
@@ -97,32 +87,22 @@ status: "yes",
 },
 {
 label:
-"Remoção automática de fundo",
-status: "yes",
-},
-{
-label:
-"Processamento de imagens em lote",
+"Remoção de fundo e processamento em lote",
 status: "partial",
 },
 {
 label:
-"Processamento executado localmente",
+"Processamento local com maior privacidade",
 status: "no",
 },
 {
 label:
-"Imagens permanecem somente na máquina",
+"Fluxo adaptado à operação da PMZ",
 status: "no",
 },
 {
 label:
-"Fluxo adaptado à operação PMZ",
-status: "no",
-},
-{
-label:
-"Execução noturna integrada à PMZ",
+"Execução noturna integrada ao processo",
 status: "no",
 },
 ],
@@ -132,12 +112,12 @@ name: "Claid Pro",
 tag: null,
 price: "US$ 49",
 priceDetail:
-"por mês · 2.000 créditos",
+"Por mês · plano sujeito a créditos",
 highlight: false,
 features: [
 {
 label:
-"Uso condicionado aos créditos do plano",
+"Uso condicionado ao plano e aos créditos",
 status: "partial",
 },
 {
@@ -147,32 +127,22 @@ status: "yes",
 },
 {
 label:
-"Remoção automática de fundo",
+"Remoção de fundo e processamento em lote",
 status: "yes",
 },
 {
 label:
-"Processamento de imagens em lote",
-status: "yes",
-},
-{
-label:
-"Processamento executado localmente",
+"Processamento local com maior privacidade",
 status: "no",
 },
 {
 label:
-"Imagens permanecem somente na máquina",
+"Fluxo adaptado à operação da PMZ",
 status: "no",
 },
 {
 label:
-"Fluxo adaptado à operação PMZ",
-status: "no",
-},
-{
-label:
-"Execução noturna integrada à PMZ",
+"Execução noturna integrada ao processo",
 status: "partial",
 },
 ],
@@ -189,28 +159,28 @@ highlight: boolean;
 if (status === "yes") {
 return (
 <Check
-className={`h-4 w-4 mt-0.5 shrink-0 ${
+className={`mt-0.5 h-4 w-4 shrink-0 ${
           highlight
             ? "text-primary"
-            : "text-green-600"
+            : "text-green-600 dark:text-green-400"
         }`}
 />
 );
 }
 
 if (status === "partial") {
-return ( <Minus className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
+return ( <Minus className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
 );
 }
 
-return ( <X className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground/40" />
+return ( <X className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/40" />
 );
 }
 
 const ComparisonSection = () => {
 return ( <section
    id="comparativo"
-   className="relative h-screen flex items-center overflow-hidden"
+   className="relative flex min-h-screen items-center overflow-hidden py-8 sm:py-10"
  > <SectionBackground
      showOrb={false}
      imageOpacity={0.2}
@@ -218,7 +188,8 @@ return ( <section
    />
 
 
-  <div className="container relative z-10 mx-auto px-6 py-6">
+  <div className="container relative z-10 mx-auto px-6">
+    {/* CABEÇALHO */}
     <motion.div
       initial={{
         opacity: 0,
@@ -234,25 +205,30 @@ return ( <section
       transition={{
         duration: 0.6,
       }}
-      className="text-center mb-6"
+      className="mx-auto mb-6 max-w-4xl text-center"
     >
-      <h2 className="text-3xl font-bold sm:text-4xl lg:text-5xl">
-        Mais que economia:{" "}
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+        Comparativo de alternativas
+      </p>
+
+      <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">
+        Comparativo de custo e{" "}
         <span className="text-gradient-forge">
-          controle e escala
+          aderência operacional
         </span>
       </h2>
 
-      <p className="mt-3 text-base text-muted-foreground max-w-2xl mx-auto">
-        Uma solução desenvolvida para
-        a operação PMZ, sem
-        mensalidade, sem cobrança por
-        imagem e com processamento
-        local.
+      <p className="mx-auto mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+        Enquanto soluções externas dependem de
+        assinaturas, créditos e processamento em
+        nuvem, o Pixel Forge foi desenvolvido para
+        operar localmente e acompanhar o fluxo real
+        da PMZ.
       </p>
     </motion.div>
 
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch max-w-6xl mx-auto">
+    {/* CARDS */}
+    <div className="mx-auto grid max-w-6xl grid-cols-1 items-stretch gap-4 lg:grid-cols-3">
       {tools.map((tool, index) => (
         <motion.div
           key={tool.name}
@@ -271,16 +247,17 @@ return ( <section
             duration: 0.5,
             delay: index * 0.1,
           }}
-          className={`relative rounded-2xl border p-5 flex flex-col transition-all duration-300 ${
+          className={`relative flex flex-col rounded-2xl border p-5 transition-all duration-300 ${
             tool.highlight
               ? "border-primary/50 bg-primary/5 shadow-[0_0_40px_-10px] shadow-primary/20"
               : "border-border bg-card/60 backdrop-blur-sm"
           }`}
         >
+          {/* BADGE PIXEL FORGE */}
           {tool.highlight &&
             tool.tag && (
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-forge-gradient px-3 py-1 text-xs font-semibold text-primary-foreground whitespace-nowrap">
+                <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-forge-gradient px-3 py-1 text-xs font-semibold text-primary-foreground">
                   <Sparkles className="h-3 w-3" />
 
                   {tool.tag}
@@ -288,9 +265,10 @@ return ( <section
               </div>
             )}
 
+          {/* TÍTULO E PREÇO */}
           <div className="mb-3 mt-1">
             <h3
-              className={`text-lg font-bold font-display ${
+              className={`font-display text-lg font-bold ${
                 tool.highlight
                   ? "text-gradient-forge"
                   : "text-foreground"
@@ -311,14 +289,15 @@ return ( <section
               </span>
             </div>
 
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="mt-1 text-xs text-muted-foreground">
               {tool.priceDetail}
             </p>
           </div>
 
-          <div className="border-t border-border mb-3" />
+          <div className="mb-3 border-t border-border" />
 
-          <ul className="space-y-2.5 flex-1">
+          {/* FUNCIONALIDADES */}
+          <ul className="flex flex-1 flex-col gap-3">
             {tool.features.map(
               (feature) => (
                 <li
@@ -349,11 +328,12 @@ return ( <section
             )}
           </ul>
 
+          {/* DESTAQUE DO PROTÓTIPO */}
           {tool.highlight && (
             <div className="mt-4 rounded-xl border border-primary/25 bg-primary/10 px-3 py-2 text-center">
               <p className="text-xs font-semibold text-primary">
-                Pronto para validação
-                interna
+                Protótipo funcional pronto para
+                piloto
               </p>
             </div>
           )}
@@ -361,6 +341,7 @@ return ( <section
       ))}
     </div>
 
+    {/* LEGENDA E OBSERVAÇÃO */}
     <motion.div
       initial={{
         opacity: 0,
@@ -379,7 +360,7 @@ return ( <section
     >
       <div className="flex flex-wrap items-center justify-center gap-5 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <Check className="h-3.5 w-3.5 text-green-600" />
+          <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
           Disponível
         </span>
 
@@ -390,20 +371,17 @@ return ( <section
 
         <span className="flex items-center gap-1.5">
           <X className="h-3.5 w-3.5 text-muted-foreground/40" />
-          Não disponível no fluxo
-          avaliado
+          Não disponível no fluxo avaliado
         </span>
       </div>
 
-      <p className="text-[11px] text-muted-foreground max-w-4xl mx-auto">
-        Preços públicos consultados
-        em junho de 2026 e sujeitos a
-        alterações, câmbio, impostos
-        e consumo de créditos. O
-        Pixel Forge não possui
-        mensalidade ou cobrança por
-        imagem, mas utiliza
-        infraestrutura, energia e
+      <p className="mx-auto max-w-4xl text-[11px] leading-relaxed text-muted-foreground">
+        Valores públicos consultados em junho de
+        2026 e sujeitos a alterações, câmbio,
+        impostos, limites dos planos e consumo de
+        créditos. O Pixel Forge não exige licença
+        ou API recorrente, mas utiliza
+        infraestrutura, energia, manutenção e
         suporte internos.
       </p>
     </motion.div>

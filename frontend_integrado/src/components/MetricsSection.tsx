@@ -545,16 +545,17 @@ const OvernightChart = () => {
 
 const MetricsSection = () => {
   return (
-    <section className="relative h-screen flex items-center overflow-hidden">
+    <section className="relative min-h-screen flex items-center overflow-hidden">
       <SectionBackground />
 
       <div className="relative z-10 w-full container mx-auto px-6 py-8 space-y-5">
         <div className="text-center mx-auto">
           <h2 className="text-3xl font-bold text-foreground">
-            Capacidade noturna com{" "}
+            Como o{" "}
             <span className="text-gradient-forge">
               Pixel Forge
             </span>
+            entra na operação
           </h2>
 
           <p className="text-sm text-muted-foreground mt-1">

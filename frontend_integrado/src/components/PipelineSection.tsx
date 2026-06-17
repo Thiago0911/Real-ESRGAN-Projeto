@@ -61,11 +61,11 @@ const titleStyles = {
 
 const EsrganSection = () => {
   return (
-    <section id="arquitetura" className="relative min-h-screen flex items-center">
+    <section id="arquitetura" className="relative min-h-screen flex items-center py-12 sm:py-20">
       <div className="absolute inset-0 bg-grid-pattern opacity-10" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-primary/5 blur-[120px] pointer-events-none" />
 
-      <div className="container relative mx-auto px-6 py-20">
+      <div className="container relative mx-auto px-6 py-12 sm:py-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

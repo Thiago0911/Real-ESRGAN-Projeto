@@ -102,7 +102,7 @@ const kpis = [
     label: `Esforço para ${formatNumber(REFERENCE_VOLUME)} imagens`,
     value: formatNumber(REFERENCE_EFFORT_HOURS),
     unit: "horas de trabalho",
-    sub: "Somatório das horas dos analistas",
+    sub: "Carga manual total necessária",
     badge: "Carga operacional",
   },
   {
@@ -111,7 +111,7 @@ const kpis = [
     value: formatNumber(TEAM_CAPACITY_IN_CRITICAL_PERIOD),
     unit: "imagens",
     sub: `${TEAM_SIZE} analistas dedicados integralmente`,
-    badge: "Impacto no go-live",
+    badge: "Impacto para o go-live",
   },
 ];
 
@@ -412,7 +412,7 @@ const CoverageChart = ({
 
 const ManualProductivitySection = () => {
   return (
-    <section className="relative h-screen flex items-center overflow-hidden">
+    <section className="relative min-h-screen flex items-center overflow-hidden">
       <SectionBackground
         showOrb={false}
         imageOpacity={0.25}
@@ -489,12 +489,12 @@ const ManualProductivitySection = () => {
           <div className="flex items-start justify-between gap-4 mb-3">
             <div>
               <p className="text-sm font-semibold">
-                Quanto o volume de imagens impacta o go-live
+                Como o volume impacta o prazo de tratamento
               </p>
 
               <p className="text-xs text-muted-foreground mt-1">
-                Comparativo entre a capacidade individual e a
-                mobilização de toda a equipe.
+                Comparação entre a capacidade de um analista e a
+                mobilização integral de toda a equipe.
               </p>
             </div>
 

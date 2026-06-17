@@ -6,7 +6,7 @@ import { INTERNAL_APP_URL } from "@/lib/links";
 
 const HeroSection = () => {
   return (
-    <section className="relative h-screen flex items-center justify-center overflow-hidden pt-16">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
       {/* Background */}
       <div className="absolute inset-0">
         <img
@@ -40,9 +40,9 @@ const HeroSection = () => {
           </motion.div>
 
           <h1 className="text-5xl font-bold leading-tight tracking-tight sm:text-6xl lg:text-7xl">
-            <span className="block">Imagens melhores</span>
+            <span className="block">Qualidade visual em escala</span>
             <Typewriter
-              words={["Catálogo no padrão PMZ", "Operação mais rápida", "Resultados profissionais"]}
+              words={["Catálogo no padrão PMZ", "Processamento local com IA", "Mais capacidade operacional"]}
               className="text-gradient-forge block whitespace-nowrap md:whitespace-normal"
               cursorClassName="animate-pulse"
               typingSpeedMs={70}
@@ -53,7 +53,7 @@ const HeroSection = () => {
 
           <p className="mt-5 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             Uma solução de IA local que aumenta a resolução, remove fundos e processa imagens em lote,
-            reduzindo tarefas manuais e acelerando a preparação do catálogo para o e-commerce.
+            reduzindo tarefas manuais e acelerando a evolução contínua da qualidade visual do catálogo.
           </p>
 
           {/*
@@ -82,8 +82,8 @@ const HeroSection = () => {
             className="mt-10 grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-2xl mx-auto"
           >
             {[
-              { value: "Resolução 4x", label: "Mais nitidez para destacar cada produto." },
-              { value: "Processamento em lote", label: "Várias imagens preparadas em uma única execução." },
+              { value: "Resolução 4x", label: "Mais nitidez para destaque do produto." },
+              { value: "Processamento em lote", label: "Mais escala operacional." },
               { value: "100% local", label: "Mais privacidade, controle e segurança para a operação." },
            // { value: "Remoção de Fundo", label: "Remova fundos automaticamente com recorte preciso de bordas." },
            // { value: "Privacidade e controle", label: "As imagens não saem da máquina — mais segurança para dados internos." },
