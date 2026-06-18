@@ -108,11 +108,11 @@ const TechStackSection = () => {
   return (
     <section
       id="stack"
-      className="relative min-h-screen flex items-center overflow-hidden"
+      className="relative flex min-h-[100svh] items-center overflow-hidden snap-start snap-always lg:h-[calc(100svh-4rem)] lg:min-h-0"
     >
       <SectionBackground showOrb={true} imageOpacity={0.2} gridOpacity={0.12} />
 
-      <div className="container relative z-10 mx-auto px-6 py-8 space-y-6">
+      <div className="container relative z-10 mx-auto w-full px-6 pt-8 pb-2 space-y-3 lg:pt-10 lg:pb-2">
 
         {/* Header */}
         <motion.div
@@ -122,7 +122,7 @@ const TechStackSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center"
         >
-          <h2 className="text-3xl font-bold sm:text-4xl lg:text-5xl">
+          <h2 className="mt-1.5 text-2xl font-bold leading-tight text-foreground sm:text-3xl lg:whitespace-nowrap lg:text-[2.25rem] xl:text-[2.5rem]">
             Tecnologias por trás do <span className="text-gradient-forge">Pixel Forge</span>
           </h2>
           <p className="mt-3 text-base text-muted-foreground max-w-2xl mx-auto">
@@ -130,9 +130,6 @@ const TechStackSection = () => {
             de inteligência artificial em um único fluxo de processamento.
           </p>
 
-          <p className="mt-1 text-xs text-muted-foreground max-w-2xl mx-auto">
-            Sem cobrança por imagem e sem envio dos arquivos para serviços externos.
-          </p>
         </motion.div>
 
         {/* Camadas */}

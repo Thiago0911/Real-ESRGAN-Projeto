@@ -422,7 +422,7 @@ const ManualProductivitySection = () => {
       <div className="relative z-10 w-full container mx-auto px-6 py-8 space-y-4">
         {/* HEADER */}
         <div className="text-center mx-auto">
-          <h2 className="text-3xl font-bold text-foreground">
+          <h2 className="mt-1.5 text-2xl font-bold leading-tight text-foreground sm:text-3xl lg:whitespace-nowrap lg:text-[2.25rem] xl:text-[2.5rem]">
             Antes da automação: o limite do
             <span className="text-gradient-forge">
               {" "}

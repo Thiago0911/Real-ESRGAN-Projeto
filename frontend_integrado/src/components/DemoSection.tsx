@@ -45,7 +45,7 @@ const DemoSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-10"
         >
-          <h2 className="text-3xl font-bold sm:text-4xl lg:text-5xl">
+          <h2 className="mt-1.5 text-2xl font-bold leading-tight text-foreground sm:text-3xl lg:whitespace-nowrap lg:text-[2.25rem] xl:text-[2.5rem]">
             Da imagem original ao <span className="text-gradient-forge">padrão de catálogo</span>
           </h2>
           <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
@@ -53,7 +53,7 @@ const DemoSection = () => {
           </p>
         </motion.div>
 
-        <div className="grid gap-10 md:grid-cols-2 max-w-5xl mx-auto">
+        <div className="grid gap-6 md:grid-cols-2 max-w-7xl mx-auto">
           {demos.map((demo, i) => (
             <motion.div
               key={demo.title}

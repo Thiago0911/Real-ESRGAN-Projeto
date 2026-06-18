@@ -1,100 +1,153 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles, Zap } from "lucide-react";
+import {
+  Cpu,
+  Images,
+  Sparkles,
+  ZoomIn,
+} from "lucide-react";
+
 import heroBg from "@/assets/hero-bg.jpg";
 import Typewriter from "@/components/ui/typewriter";
-import { INTERNAL_APP_URL } from "@/lib/links";
+
+const highlights = [
+  {
+    icon: ZoomIn,
+    value: "Resolução 4x",
+    label: "Mais nitidez",
+  },
+  {
+    icon: Images,
+    value: "Processamento em lote",
+    label: "Mais produtividade",
+  },
+  {
+    icon: Cpu,
+    value: "100% local",
+    label: "Segurança e controle",
+  },
+];
 
 const HeroSection = () => {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+    <section className="relative flex min-h-screen w-full items-center justify-center overflow-hidden px-5 py-8 sm:px-6 lg:py-10">
       {/* Background */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 w-full">
         <img
           src={heroBg}
           alt="Pixel Forge background"
-          className="h-full w-full object-cover opacity-40"
+          className="absolute inset-0 block h-full w-full object-fill opacity-40"
         />
+
         <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
         <div className="absolute inset-0 bg-grid-pattern opacity-20" />
       </div>
 
-      {/* Glow orb */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/10 blur-[120px] animate-pulse-glow" />
+      {/* Glow */}
+      <div
+        aria-hidden="true"
+        className="absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[110px] sm:h-[520px] sm:w-[520px]"
+      />
 
-      <div className="container relative z-10 mx-auto px-6 text-center">
+      <div className="container relative z-10 mx-auto">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="mx-auto max-w-4xl"
+          transition={{ duration: 0.7 }}
+          className="mx-auto flex max-w-5xl flex-col items-center text-center"
         >
           {/* Badge */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary"
+            transition={{ duration: 0.45, delay: 0.1 }}
+            className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-medium text-primary sm:text-sm"
           >
-            <Sparkles className="h-4 w-4" />
-            IA local para acelerar e padronizar o catálogo PMZ
+            <Sparkles className="h-4 w-4 shrink-0" />
+
+            <span>
+              IA local para acelerar e padronizar o catálogo PMZ
+            </span>
           </motion.div>
 
-          <h1 className="text-5xl font-bold leading-tight tracking-tight sm:text-6xl lg:text-7xl">
-            <span className="block">Qualidade visual em escala</span>
-            <Typewriter
-              words={["Catálogo no padrão PMZ", "Processamento local com IA", "Mais capacidade operacional"]}
-              className="text-gradient-forge block whitespace-nowrap md:whitespace-normal"
-              cursorClassName="animate-pulse"
-              typingSpeedMs={70}
-              deletingSpeedMs={40}
-              pauseMs={900}
-            />
+          {/* Nome do projeto */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mb-3 text-sm font-semibold uppercase tracking-[0.32em] text-primary sm:text-base"
+          >
+           {/* Pixel Forge */}
+          </motion.p>
+
+          {/* Título */}
+          <h1 className="w-full max-w-5xl font-display text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl">
+            <span className="block">
+              Qualidade visual em escala
+            </span>
+
+            {/* Altura mínima evita que a tela pule */}
+            <span className="mt-2 flex min-h-[2.35em] items-start justify-center sm:min-h-[1.25em]">
+              <Typewriter
+                words={[
+                  "Catálogo no padrão PMZ",
+                  "Processamento local com IA",
+                  "Mais capacidade operacional",
+                ]}
+                className="text-gradient-forge block max-w-full text-center"
+                cursorClassName="animate-pulse"
+                typingSpeedMs={65}
+                deletingSpeedMs={30}
+                pauseMs={1800}
+              />
+            </span>
           </h1>
 
-          <p className="mt-5 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Uma solução de IA local que aumenta a resolução, remove fundos e processa imagens em lote,
-            reduzindo tarefas manuais e acelerando a evolução contínua da qualidade visual do catálogo.
+          {/* Descrição */}
+          <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-muted-foreground sm:text-lg lg:text-xl">
+            Uma solução que aumenta a resolução, remove fundos e processa
+            imagens em lote, reduzindo tarefas manuais e acelerando a evolução
+            da qualidade visual do catálogo.
           </p>
-
-          {/*
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a href={INTERNAL_APP_URL}>
-              <button className="inline-flex items-center justify-center h-14 px-10 rounded-xl text-lg font-semibold bg-forge-gradient text-primary-foreground glow-forge hover:brightness-110 transition-all gap-2">
-                Ver Mais
-                <ArrowRight className="h-5 w-5" />
-              </button>
-            </a>
-
-            <a href="#impacto">
-              <button className="inline-flex items-center justify-center h-14 px-10 rounded-xl text-lg font-medium border border-border bg-secondary/50 text-secondary-foreground hover:bg-secondary transition-all gap-2">
-                <Zap className="h-5 w-5" />
-                Ver impacto
-              </button>
-            </a>
-          </div>
-          */}
 
           {/* Diferenciais */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.8 }}
-            className="mt-10 grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-2xl mx-auto"
-          >
-            {[
-              { value: "Resolução 4x", label: "Mais nitidez para destaque do produto." },
-              { value: "Processamento em lote", label: "Mais escala operacional." },
-              { value: "100% local", label: "Mais privacidade, controle e segurança para a operação." },
-           // { value: "Remoção de Fundo", label: "Remova fundos automaticamente com recorte preciso de bordas." },
-           // { value: "Privacidade e controle", label: "As imagens não saem da máquina — mais segurança para dados internos." },
-           // { value: "Mais conversão", label: "Imagens melhores geram confiança" },
-           // { value: "Padrão PMZ", label: "Consistência visual no e-commerce" },
-            ].map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-border bg-card/40 p-4">
-                <div className="text-xl font-bold font-display text-gradient-forge">{stat.value}</div>
-                <div className="mt-1 text-xs text-muted-foreground">{stat.label}</div>
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="mt-7 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3"
+        >
+          {highlights.map(({ icon: Icon, value, label }) => (
+            <div
+              key={value}
+              className="flex items-center gap-3 rounded-2xl border border-border bg-card/50 p-4 text-left backdrop-blur-sm"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Icon className="h-5 w-5" />
               </div>
-            ))}
+
+              <div className="min-w-0">
+                <div className="whitespace-nowrap font-display text-sm font-bold leading-tight text-gradient-forge lg:text-base xl:text-lg">
+                  {value}
+                </div>
+
+                <div className="mt-1 text-xs text-muted-foreground sm:text-sm">
+                  {label}
+                </div>
+              </div>
+            </div>
+          ))}
+        </motion.div>
+
+          {/* Equipe */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.85 }}
+            className="mt-6 text-xs text-muted-foreground sm:text-sm"
+          >
+            <span className="font-medium text-foreground">
+            </span>{" "}
+            Theed Wilk • E-commerce
           </motion.div>
         </motion.div>
       </div>

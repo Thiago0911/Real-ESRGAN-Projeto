@@ -22,7 +22,7 @@ const StepCard = ({ step, badge, badgeColor, title, desc, delay, iaBadge }) => {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.45, delay }}
-      className={`relative rounded-xl border bg-card/60 backdrop-blur-sm px-3 py-2.5 flex flex-col gap-0.5 ${c.card}`}
+      className={`relative rounded-xl border bg-card/60 backdrop-blur-sm px-4 py-3 flex min-h-[118px] flex-col gap-1 ${c.card}`}
     >
       <span className={`absolute right-3 top-1.5 text-3xl font-bold leading-none select-none ${c.number}`}>
         {step}
@@ -126,7 +126,7 @@ const FlowSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center"
         >
-          <h2 className="text-3xl font-bold sm:text-4xl lg:text-5xl">
+          <h2 className="mt-1.5 text-2xl font-bold leading-tight text-foreground sm:text-3xl lg:whitespace-nowrap lg:text-[2.25rem] xl:text-[2.5rem]">
             Do upload ao resultado: <span className="text-gradient-forge">fluxo da aplicação</span>
           </h2>
           <p className="mt-3 text-base text-muted-foreground max-w-xl mx-auto">

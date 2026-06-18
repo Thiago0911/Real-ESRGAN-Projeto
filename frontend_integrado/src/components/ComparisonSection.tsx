@@ -180,7 +180,7 @@ return ( <X className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/40" />
 const ComparisonSection = () => {
 return ( <section
    id="comparativo"
-   className="relative flex min-h-screen items-center overflow-hidden py-8 sm:py-10"
+   className="relative flex min-h-[100svh] items-center overflow-hidden snap-start snap-always lg:h-[calc(100svh-4rem)] lg:min-h-0"
  > <SectionBackground
      showOrb={false}
      imageOpacity={0.2}
@@ -188,7 +188,7 @@ return ( <section
    />
 
 
-  <div className="container relative z-10 mx-auto px-6">
+  <div className="container relative z-10 mx-auto w-full px-6 py-4 lg:py-3">
     {/* CABEÇALHO */}
     <motion.div
       initial={{
@@ -205,13 +205,13 @@ return ( <section
       transition={{
         duration: 0.6,
       }}
-      className="mx-auto mb-6 max-w-4xl text-center"
+      className="mx-auto mb-6 max-w-7xl text-center"
     >
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
         Comparativo de alternativas
       </p>
 
-      <h2 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">
+      <h2 className="mt-1.5 text-2xl font-bold leading-tight text-foreground sm:text-3xl lg:whitespace-nowrap lg:text-[2.25rem] xl:text-[2.5rem]">
         Comparativo de custo e{" "}
         <span className="text-gradient-forge">
           aderência operacional
