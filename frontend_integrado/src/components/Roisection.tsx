@@ -126,7 +126,7 @@ const ROISection = () => {
             className="mx-auto max-w-4xl text-center"
           >
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary sm:text-xs">
-              ROI para o negócio
+              Retorno financeiro direto
             </p>
 
             <h2 className="mt-1.5 text-2xl font-bold leading-tight text-foreground sm:text-3xl lg:whitespace-nowrap lg:text-[2.25rem] xl:text-[2.5rem]">
@@ -135,7 +135,7 @@ const ROISection = () => {
             </h2>
 
             <p className="mx-auto mt-2 max-w-3xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
-              O Pixel Forge elimina licenças e APIs externas, mantendo o
+              O Pixel Forge não necessita de licenças e APIs externas, mantendo o
               tratamento das imagens dentro da infraestrutura da PMZ.
             </p>
           </motion.div>

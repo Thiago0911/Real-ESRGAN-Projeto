@@ -580,7 +580,8 @@ app.post("/api/remove-background", upload.array("images", 50), async (req, res) 
     }
   } catch {}
 
-  for (const file of req.files) {
+  try {
+    for (const file of req.files) {
     const originalName = path.basename(file.originalname);
     const baseName = path.parse(originalName).name;
 
@@ -596,6 +597,8 @@ app.post("/api/remove-background", upload.array("images", 50), async (req, res) 
 
     await new Promise((resolve, reject) => {
       const proc = spawn("cmd.exe", [
+        "/d",
+        "/s",
         "/c",
         batToExecute,
         destInput
@@ -656,6 +659,13 @@ app.post("/api/remove-background", upload.array("images", 50), async (req, res) 
     sendWsMessage(taskId, "log", {
       logLine: `[REMOVE-BG] Gerado: ${finalName}`
     });
+  }
+
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    running = false;
+    sendWsMessage(taskId, "error", { message });
+    return res.status(500).json({ error: message });
   }
 
   running = false;

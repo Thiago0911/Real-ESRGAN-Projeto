@@ -27,13 +27,13 @@ const demos = [
     beforeLabel: "Original",
     afterLabel: "Sem fundo",
     caption: "Recorte automático para padronização das imagens do catálogo.",
-    fit: "cover" as const,
+    fit: "contain" as const,
   },
 ];
 
 const DemoSection = () => {
   return (
-    <section id="demo" className="relative min-h-screen flex items-center overflow-hidden">
+    <section id="demo" className="relative min-h-screen flex items-center overflow-x-hidden">
       {/* Background — mesmo padrão da HeroSection */}
       <SectionBackground showOrb={false} imageOpacity={0.25} gridOpacity={0.15} />
 
